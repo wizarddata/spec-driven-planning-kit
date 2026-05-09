@@ -19,12 +19,13 @@ On every kickoff, agent runs this check **first**:
    > Spec-driven planning kit not installed in your global agent-instruction file. Install §9 snippet now (one-time per machine, ~50 lines)? [y/N]
 
 4. On `y`:
-   - Append §9 snippet block (including marker as the first line) to the global agent-instruction file.
+   - Append §9 snippet block to the global agent-instruction file.
+   - Edit the path on line 2 to point at wherever the kit was actually cloned (the snippet ships with `~/Documents/spec-driven-planning-kit/spec-driven-planning-kit.md` as a placeholder).
    - If global file does not exist, create it.
    - Print one-line confirm: `kit installed → ~/.claude/CLAUDE.md (or wherever)`. Then resume the kickoff phrase as if just received.
 5. On `n` → abort kit, treat the request as normal (no kit mechanics this session).
 
-After install, every future session auto-loads the snippet via the global agent-instruction file. The §0 check still fires once per kickoff (cheap grep), almost always passes silently. **No per-load token overhead** — the snippet's bytes ride along with CLAUDE.md content the agent already reads each session.
+After install, every future session auto-loads the snippet (2 lines) via the global agent-instruction file. The §0 check still fires once per kickoff (cheap grep), almost always passes silently. **Per-load cost: 2 lines.** Operational rules don't live in CLAUDE.md — they live in §6 / §7 templates that get baked into every PLAN.md and PROGRESS.md the kit writes, and the agent reads PLAN/PROGRESS on every resume anyway.
 
 **Marker format:** literal HTML comment `<!-- kit:installed:v1 -->` on its own line as the first line of the appended snippet block. Version suffix lets future kit revisions (`v2`, `v3`) detect + offer to upgrade by re-pasting.
 
@@ -147,6 +148,34 @@ locks_settled: 0
 locks_remaining: ?
 ```
 
+## Kit conventions (load-bearing — do not delete)
+
+> Every PLAN.md emitted by spec-driven-planning-kit carries this header verbatim. Agent reads it on every resume; conventions stay live without bloating CLAUDE.md.
+
+- **Lock recommendation format** (every recommendation):
+    ```
+    Decision: <one-line question>
+    Recommendation: <choice>
+    Convention basis: <tag>     (e.g. "ADR (Nygard 2011)", "12-factor §III", "no direct convention; closest analog: X")
+    Tradeoff: <one-line: what you give up>
+    ```
+- **User-suggestion mapping** (when user proposes mid-iteration):
+    ```
+    You suggested: <user's idea>
+    Industry pattern match: <pattern X | "no match — novel territory">
+    Source: <citation>
+    Equivalent / closest fit: <how the pattern would solve the same problem>
+    Recommendation: <adopt | modify | proceed novel and document why>
+    ```
+- **Plan-edit commit format**:
+    - `plan: lock #N — <decision>` (with body listing convention basis, alternatives considered, tradeoff)
+    - `plan: lock #N revised — <old> → <new>` (with reason + reference to original commit)
+    - `plan: phase <N> close — promote-and-reset` (lists what was promoted to risks / traps / discarded)
+- **Promote-and-reset trigger**: at every phase close, agent migrates mid-impl decisions/surprises to PLAN.md risk register or AGENTS.md trap entries; discards sub-task checklist + commit log block; collapses state-of-branch to 1-line phase plan entry; resets PROGRESS.md to next-phase template; commits as above.
+- **AI-dense rewrite trigger**: when `locks_remaining: 0`, agent fires "Prioritize AI compatibility formatting, human readability is not required." and converts prose plan to YAML / closed enums / JSONC schema before commit.
+- **Stuck-prompts** (after 2+ stalled rounds on a single decision): assumption reframe, no-compat lock, convention audit, AI-dense rewrite — agent fires autonomously.
+- **Density signals** (agent surfaces, user decides): same fact stated 3 ways → densify; reader scrolls past current state → restructure; closing-phase debris accumulating → trigger promote-and-reset.
+
 ## §0. Locks tally
 
 | # | Decision | Outcome | Basis |
@@ -201,6 +230,8 @@ Active risks only. Resolved risks discarded or strikethrough.
 
 ```markdown
 # <feature> — Progress
+
+> **Conventions live in PLAN.md "Kit conventions" header.** Agent reads PLAN before resuming work; conventions auto-load with it. Do not duplicate here.
 
 ```yaml
 current_phase: 1
@@ -266,65 +297,18 @@ In Mode B, Phase 0 of PLAN.md = bootstrap (build the substrate prereqs in §11).
 
 ---
 
-## §9. Global agent-instruction snippet
+## §9. Global agent-instruction snippet (minimal pointer)
 
-Appended **once per machine** to the user's global agent-instruction file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.cursor/.cursorrules`, etc.) — not per project. Auto-install happens via §0 bootstrap on first kickoff phrase; user does not paste manually.
+Appended **once per machine** to the user's global agent-instruction file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.cursor/.cursorrules`, etc.). Auto-install happens via §0 bootstrap on first kickoff phrase; user does not paste manually.
 
-The marker (first line) is mandatory — `§0` greps for it to detect "installed" state.
+The marker is mandatory — `§0` greps for it to detect "installed" state. Edit the path on the second line at install time to point at wherever the user cloned the kit.
 
 ```markdown
 <!-- kit:installed:v1 -->
-## Spec-driven planning kit — explicit kickoff only
-
-Until kickoff, treat requests normally. No kit, no PLAN.md, no locks tally.
-
-Kickoff phrases:
-- "/kit <feature>"
-- "let's plan this with the kit"
-- "use the kit"
-- "engage the kit"
-
-After kickoff, all of these fire automatically:
-- Right-sizing classification (trivial / feature / greenfield)
-- Lock-iteration loop with mandatory recommendation format:
-    Decision: <one-line question>
-    Recommendation: <choice>
-    Convention basis: <tag>     (e.g. "ADR (Nygard 2011)", "12-factor §III", "no direct convention; closest analog: X")
-    Tradeoff: <one-line: what you give up>
-- Convention citation (tag-only) on every recommendation
-- User-suggestion mapping when user proposes solutions mid-iteration:
-    You suggested: <user's idea>
-    Industry pattern match: <pattern X | "no match — novel territory">
-    Source: <citation>
-    Equivalent / closest fit: <how the pattern would solve the same problem>
-    Recommendation: <adopt | modify | proceed novel and document why>
-- Stuck-prompts after 2+ stalled rounds (assumption reframe / no-compat lock / convention audit / AI-dense rewrite)
-- AI-dense rewrite when locks_remaining = 0 ("Prioritize AI compatibility formatting, human readability is not required.")
-- PLAN.md write (template in kit §6)
-- PROGRESS.md create + maintain (multi-session features only; template in kit §7)
-- Phase-close promote-and-reset (kit §10): migrate mid-impl decisions/surprises to PLAN.md risk register or AGENTS.md trap entries; discard sub-task checklist + commit log; collapse state-of-branch to 1-line phase plan entry; reset PROGRESS.md to next-phase template; commit `plan: phase <N> close — promote-and-reset`
-- Resume on "continue" / "where were we" reads PLAN + PROGRESS
-
-Plan-edit commit format (kit §13):
-- plan: lock #N — <decision>     (new lock)
-    Convention basis: <tag>
-    Alternatives considered:
-      - <alt 1> — <rejected because>
-    Tradeoff: <what we give up>
-- plan: lock #N revised — <old> → <new>
-    Reason: <new evidence / changed constraint>
-    Original rationale: see commit <hash>
-- plan: phase <N> close — promote-and-reset
-    (lists what was promoted to risks / traps / discarded)
-
-Density signals (kit §12) — agent surfaces, user decides:
-- Same fact stated three ways → densify
-- Section reader scrolls past to find current state → restructure
-- Closing-phase debris accumulating → trigger promote-and-reset
-- Reader can't find current state in ~30 sec scroll → restructure
-
-Kit file location: pointed at by user on first kickoff (e.g. ~/spec-driven-planning-kit/spec-driven-planning-kit.md). Agent reads it once for full reference; this snippet alone is enough for normal operation. For deep-dive on any specific section, agent re-reads the kit file on demand.
+Spec-driven planning kit at `~/Documents/spec-driven-planning-kit/spec-driven-planning-kit.md`. Kickoff: `/kit <feature>`, `use the kit`, `let's plan this with the kit`, `engage the kit`. On any kickoff phrase, read the kit file and follow §0..§13. Until kickoff: no kit, no PLAN.md, no overhead.
 ```
+
+That's the entire snippet — 2 lines. The operational rules (recommendation format, user-suggestion mapping, promote-and-reset, plan-edit commit format, density signals) are not duplicated here — they live in the kit body and, more importantly, get baked into every PLAN.md and PROGRESS.md the kit produces (see §6 and §7 templates' "Kit conventions (load-bearing)" header section). Agent reads PLAN/PROGRESS on every resume, so the conventions are always in context for any feature already in flight without bloating CLAUDE.md.
 
 ---
 
