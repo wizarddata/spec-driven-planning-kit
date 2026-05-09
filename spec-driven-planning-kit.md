@@ -16,7 +16,7 @@ For a feature in flight (PLAN.md present): no re-kickoff. Agent reads PLAN; the 
 
 ## §2. Industry-standard citation
 
-Every non-trivial choice during planning cites an industry-standard convention as basis. Tag-only citation: `"ADR (Nygard 2011)"`, `"12-factor §III"`, `"AGENTS.md spec (Codex/Aider/Claude)"`, `"JSON Schema + closed enums (k8s API ref)"`, or `"no direct convention; closest analog: X"`.
+Every non-trivial choice during planning cites an industry-standard convention as basis. **An industry-standard convention is a pattern published outside this project — RFC, ADR, framework convention, language spec, third-party library API, design doc.** Project-internal references (prior PLAN locks, this codebase, this team's habits, files in this repo) do NOT count and must not be used as citations. Tag-only: `"ADR (Nygard 2011)"`, `"12-factor §III"`, `"AGENTS.md spec (Codex/Aider/Claude)"`, `"JSON Schema (k8s API ref)"`, or `"no direct convention; closest analog: X"` — where `X` is also a published external pattern.
 
 **User-suggestion mapping rule:** when user proposes a solution mid-planning (not just answering Y/N), agent identifies the matching industry pattern (or names "no match — novel territory") and cites the source BEFORE evaluating the proposal.
 
@@ -47,7 +47,7 @@ revised: YYYY-MM-DD
 
 > Header copied verbatim into every PLAN.md.
 
-- **Citation**: every non-trivial choice cites an industry convention. Tag-only (e.g. `"ADR (Nygard 2011)"`, `"12-factor §III"`, `"no direct convention; closest analog: X"`).
+- **Citation**: every non-trivial choice cites an industry convention published outside this project (RFC, ADR, framework convention, spec, third-party API). Internal references (prior locks, this codebase) do NOT count. Tag-only (e.g. `"ADR (Nygard 2011)"`, `"12-factor §III"`, `"no direct convention; closest analog: <published external pattern>"`).
 - **User-suggestion mapping**: when user proposes mid-planning, agent identifies matching industry pattern (or "no match — novel territory") and cites source BEFORE evaluating.
 - **Plan-edit commits**:
     - `plan: <area> — <change>`
