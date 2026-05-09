@@ -10,19 +10,46 @@ Agent reads this file and follows §1..§9 when planning a feature.
 
 User invokes via `"use the kit at <path> to plan <feature>"`. Agent reads kit and follows §1..§9.
 
-For a feature in flight (PLAN.md present): no re-kickoff. Agent reads PLAN; the `## Kit conventions` header (§4) is part of every PLAN. Resume with `"continue"` or `"where were we"`.
+For a feature in flight (PLAN.md present): no re-kickoff. Agent reads PLAN; the `## Kit conventions` header (§4) is part of every PLAN. Resume command "read .../*IMPLEMENTATION NAME*/PLAN.md and PROGRESS.md, resume Phase 3".
 
----
+## §2. Sweep-vs-bend
 
-## §2. Industry-standard citation
+Every locked decision picks one of three verdicts — `bend`, `judge`, `sweep` — by bucketing cost and benefit on the matrix below. Forces explicit comparison of the chosen compromise against a clean-slate (greenfield) alternative; prevents the agent from silently accepting bent decisions when a refactor would be cheaper than the long-term debt.
 
-Every non-trivial choice during planning cites an architectural pattern or design convention published outside this project. **The cited pattern must operate at architectural / design level — 12-factor, ADR, arc42, C4, CAP theorem, layered config (kustomize, CSS cascade), REST resource modeling, event sourcing, idempotency keys, master/detail UI, etc.** Citations that point only at language syntax, library call signatures, file-format spec minutiae, or protocol message shapes do NOT satisfy the rule — those are implementation details, not design grounding.
+**Step 1 — bucket the sweep cost (blast radius of doing the greenfield version):**
+- **S** — ≤50 LOC, single subsystem, no migration.
+- **M** — 50-200 LOC OR multi-file refactor with no wire/data shape change.
+- **L** — >200 LOC OR wire/data shape change OR breaks a Trap-rated invariant.
 
-Project-internal references (prior PLAN locks, this codebase, this team's habits, files in this repo) do NOT count and must not be used as citations.
+**Step 2 — bucket the sweep benefit (gain from the greenfield version):**
+- **S** — cosmetic / naming / placement only.
+- **M** — architectural cleanup; removes one bent constraint.
+- **L** — unblocks future work; removes a chain of bends; converts a trap into a non-issue.
 
-Tag-only format: `"<pattern name> (<canonical source: author year | spec | RFC>)"`. Examples (not exhaustive): `"ADR (Nygard 2011 / MADR)"`, `"12-factor §III"`, `"CAP theorem (Brewer 2000) / PACELC (Abadi 2012)"`, `"CSS cascade specificity"`, `"hexagonal architecture (Cockburn 2005)"`. Use the latest canonical formulation when a pattern has evolved. Patterns not in the list above are valid citations if they meet the architectural-level bar — cite in the same format. Escape hatch: `"no direct convention; closest analog: <published architectural pattern>"`.
+**Step 3 — look up the verdict:**
 
-**User-suggestion mapping rule:** when user proposes a solution mid-planning (not just answering Y/N), agent identifies the matching industry pattern (or names "no match — novel territory") and cites the source BEFORE evaluating the proposal.
+```
+            BENEFIT
+            S      M       L
+COST  S    bend  sweep  sweep
+COST  M    bend  judge  sweep
+COST  L    bend  bend   judge
+```
+
+**Step 4 — apply the verdict:**
+- `bend` → record locked decision; continue planning.
+- `judge` → output cost+benefit summary to user; await explicit lock; do not lock alone.
+- `sweep` → halt planning; output sweep alternative to user; do not lock until user confirms (continue with sweep, or override to bend).
+
+**Locked-decision row format** (used in PROGRESS.md "Locked decisions" tables):
+
+```
+| # | Decision | Sweep cost | Sweep benefit | Verdict | Notes |
+```
+
+Notes field required on every row. One line: greenfield version + concrete blocking cost (LOC count, file count, trap reference, dependency name).
+
+**User-suggestion mapping rule:** when the user proposes a solution mid-planning (not just answering Y/N), the agent buckets the suggestion's cost + benefit per the matrix BEFORE evaluating, and outputs the verdict (`bend` / `judge` / `sweep`) alongside the response.
 
 ---
 
@@ -30,7 +57,10 @@ Tag-only format: `"<pattern name> (<canonical source: author year | spec | RFC>)
 
 Agent fires autonomously when conditions hit. User can fire manually.
 
-- Stall (2+ rounds on a decision) or recommendation lacks convention basis → ask: *"How do popular [X] handle this? Name source. If novel, name closest analog and justify divergence."*
+- Stall (2+ rounds on a decision) → ask: *"Bucket cost + benefit per §2 matrix. If you can't tell S vs M, default M."*
+- Cost or benefit not bucketed → ask: *"Pick S/M/L for each. Anchor to LOC count, file count, or trap reference."*
+- Verdict = `sweep`, agent attempted to lock the bend anyway → ask: *"Verdict sweep. Halt planning. Output sweep alternative to user."*
+- Verdict = `judge` → ask: *"Judgment call. Output cost+benefit to user. Do not lock alone."*
 - Spec drafted but prose-heavy → ask: *"Prioritize AI compatibility formatting, human readability is not required."*
 
 ---
@@ -51,15 +81,29 @@ revised: YYYY-MM-DD
 
 > Header copied verbatim into every PLAN.md.
 
-- **Citation**: every non-trivial choice cites an architectural pattern or design convention published outside this project (12-factor, ADR, arc42, CAP, layered config, CSS cascade, REST modeling, etc.). Language syntax, library call signatures, file-format minutiae, and protocol-message shape do NOT count — those are implementation, not design. Internal references (prior locks, this codebase) do NOT count. Tag-only format: `"<pattern> (<canonical source>)"`; examples not exhaustive — cite latest canonical formulation when a pattern has evolved. Escape hatch: `"no direct convention; closest analog: <published architectural pattern>"`.
-- **User-suggestion mapping**: when user proposes mid-planning, agent identifies matching industry pattern (or "no match — novel territory") and cites source BEFORE evaluating.
+- **Sweep-vs-bend** (every locked decision):
+  - **Cost buckets** (sweep blast radius): S ≤50 LOC, no migration. M 50-200 LOC OR multi-file refactor, no wire/data shape change. L >200 LOC OR wire/data shape change OR breaks Trap-rated invariant.
+  - **Benefit buckets** (greenfield gain): S cosmetic / naming / placement. M architectural cleanup, removes one bent constraint. L unblocks future work, removes chain of bends, converts trap to non-issue.
+  - **Verdict matrix:**
+    ```
+                BENEFIT
+                S      M       L
+    COST  S    bend  sweep  sweep
+    COST  M    bend  judge  sweep
+    COST  L    bend  bend   judge
+    ```
+  - **Verdict actions:** bend → record + continue. judge → surface cost+benefit, await user lock. sweep → halt planning, surface alternative.
+  - **Lock-table row format:** `| # | Decision | Sweep cost | Sweep benefit | Verdict | Notes |`. Notes required, one line: greenfield version + concrete blocking cost.
+- **User-suggestion mapping**: bucket cost + benefit per matrix BEFORE evaluating user proposal. Output verdict.
 - **Plan-edit commits**:
     - `plan: <area> — <change>`
     - `plan: phase <N> close — promote-and-reset`
 - **Stuck-prompts** (agent fires autonomously):
-    - Stall or weak convention basis → *"How do popular [X] handle this? Name source. If novel, name closest analog and justify divergence."*
+    - Cost or benefit not bucketed → *"Pick S/M/L. Default M if unsure. Anchor to LOC count, file count, or trap reference."*
+    - Verdict = sweep, attempted bend lock → *"Verdict sweep. Halt planning. Output sweep alternative."*
+    - Verdict = judge → *"Judgment call. Output cost+benefit. Do not lock alone."*
     - Draft prose-heavy → *"Prioritize AI compatibility formatting, human readability is not required."*
-- **Promote-and-reset (phase close)**: migrate mid-impl decisions/surprises → PLAN risks or AGENTS traps; discard sub-tasks + commit log; collapse state-of-branch → 1-line phase plan entry; reset PROGRESS to next phase.
+- **Promote-and-reset (phase close)**: migrate mid-impl decisions/surprises → PLAN risks or AGENTS traps; discard sub-tasks + commit log; collapse state-of-branch → 1-line phase plan entry; reset PROGRESS to next phase. **Sweep tally:** count `sweep` verdicts in phase (target 0; non-zero → flag in PROGRESS); each `judge` verdict must cite explicit user-confirmed lock in commit log; same constraint pinning ≥3 `bend` verdicts → append to PROGRESS "sweep candidates" subsection for next branch.
 - **Density signals**: same fact 3 ways → densify; reader scrolls past current state → restructure; closing-phase debris → promote-and-reset.
 
 ## §1. Glossary
