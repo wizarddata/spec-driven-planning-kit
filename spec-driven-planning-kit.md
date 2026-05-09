@@ -16,7 +16,11 @@ For a feature in flight (PLAN.md present): no re-kickoff. Agent reads PLAN; the 
 
 ## §2. Industry-standard citation
 
-Every non-trivial choice during planning cites an industry-standard convention as basis. **An industry-standard convention is a pattern published outside this project — RFC, ADR, framework convention, language spec, third-party library API, design doc.** Project-internal references (prior PLAN locks, this codebase, this team's habits, files in this repo) do NOT count and must not be used as citations. Tag-only: `"ADR (Nygard 2011)"`, `"12-factor §III"`, `"AGENTS.md spec (Codex/Aider/Claude)"`, `"JSON Schema (k8s API ref)"`, or `"no direct convention; closest analog: X"` — where `X` is also a published external pattern.
+Every non-trivial choice during planning cites an architectural pattern or design convention published outside this project. **The cited pattern must operate at architectural / design level — 12-factor, ADR, arc42, C4, CAP theorem, layered config (kustomize, CSS cascade), REST resource modeling, event sourcing, idempotency keys, master/detail UI, etc.** Citations that point only at language syntax, library call signatures, file-format spec minutiae, or protocol message shapes do NOT satisfy the rule — those are implementation details, not design grounding.
+
+Project-internal references (prior PLAN locks, this codebase, this team's habits, files in this repo) do NOT count and must not be used as citations.
+
+Tag-only format: `"<pattern name> (<canonical source: author year | spec | RFC>)"`. Examples (not exhaustive): `"ADR (Nygard 2011 / MADR)"`, `"12-factor §III"`, `"CAP theorem (Brewer 2000) / PACELC (Abadi 2012)"`, `"CSS cascade specificity"`, `"hexagonal architecture (Cockburn 2005)"`. Use the latest canonical formulation when a pattern has evolved. Patterns not in the list above are valid citations if they meet the architectural-level bar — cite in the same format. Escape hatch: `"no direct convention; closest analog: <published architectural pattern>"`.
 
 **User-suggestion mapping rule:** when user proposes a solution mid-planning (not just answering Y/N), agent identifies the matching industry pattern (or names "no match — novel territory") and cites the source BEFORE evaluating the proposal.
 
@@ -47,7 +51,7 @@ revised: YYYY-MM-DD
 
 > Header copied verbatim into every PLAN.md.
 
-- **Citation**: every non-trivial choice cites an industry convention published outside this project (RFC, ADR, framework convention, spec, third-party API). Internal references (prior locks, this codebase) do NOT count. Tag-only (e.g. `"ADR (Nygard 2011)"`, `"12-factor §III"`, `"no direct convention; closest analog: <published external pattern>"`).
+- **Citation**: every non-trivial choice cites an architectural pattern or design convention published outside this project (12-factor, ADR, arc42, CAP, layered config, CSS cascade, REST modeling, etc.). Language syntax, library call signatures, file-format minutiae, and protocol-message shape do NOT count — those are implementation, not design. Internal references (prior locks, this codebase) do NOT count. Tag-only format: `"<pattern> (<canonical source>)"`; examples not exhaustive — cite latest canonical formulation when a pattern has evolved. Escape hatch: `"no direct convention; closest analog: <published architectural pattern>"`.
 - **User-suggestion mapping**: when user proposes mid-planning, agent identifies matching industry pattern (or "no match — novel territory") and cites source BEFORE evaluating.
 - **Plan-edit commits**:
     - `plan: <area> — <change>`
