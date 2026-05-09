@@ -6,6 +6,32 @@ Single-document portable kit for solo + AI planning of features and full project
 
 ---
 
+## §0. Install bootstrap (runs on every kickoff)
+
+Kit considers itself **uninstalled** until the §9 snippet lives in the user's global agent-instruction file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.cursor/.cursorrules`, etc.). Until installed, kickoff phrases (§2) trigger install — not lock-iteration.
+
+On every kickoff, agent runs this check **first**:
+
+1. Grep the global agent-instruction file for marker `<!-- kit:installed:v1 -->`.
+2. If marker present → kit installed, proceed to §2 kickoff handling.
+3. If marker absent → STOP. Prompt user:
+
+   > Spec-driven planning kit not installed in your global agent-instruction file. Install §9 snippet now (one-time per machine, ~50 lines)? [y/N]
+
+4. On `y`:
+   - Append §9 snippet block (including marker as the first line) to the global agent-instruction file.
+   - If global file does not exist, create it.
+   - Print one-line confirm: `kit installed → ~/.claude/CLAUDE.md (or wherever)`. Then resume the kickoff phrase as if just received.
+5. On `n` → abort kit, treat the request as normal (no kit mechanics this session).
+
+After install, every future session auto-loads the snippet via the global agent-instruction file. The §0 check still fires once per kickoff (cheap grep), almost always passes silently. **No per-load token overhead** — the snippet's bytes ride along with CLAUDE.md content the agent already reads each session.
+
+**Marker format:** literal HTML comment `<!-- kit:installed:v1 -->` on its own line as the first line of the appended snippet block. Version suffix lets future kit revisions (`v2`, `v3`) detect + offer to upgrade by re-pasting.
+
+**First-time discovery:** the agent only knows about the kit if it has either (a) already loaded the snippet from a prior install, or (b) been pointed at the kit file by the user (e.g. `"use the kit at ~/path/to/spec-driven-planning-kit.md"`). Path (b) is the bootstrapping case for a fresh machine: agent reads the kit file once, sees this §0, runs the prompt, installs. From then on path (a) covers every session.
+
+---
+
 ## §1. When to use
 
 Three sizes:
@@ -30,7 +56,9 @@ Kickoff phrases:
 - `"use the kit"`
 - `"engage the kit"`
 
-After kickoff, ALL mechanics fire automatically until plan locked + implementation complete.
+**On every kickoff, §0 install bootstrap runs FIRST.** If kit is uninstalled (marker absent from global agent-instruction file), agent prompts to install before doing anything else; no lock-iteration, no PLAN.md write, no kit mechanics until install completes (or user declines, in which case kit aborts for this session).
+
+After kickoff (and successful install if needed), ALL mechanics fire automatically until plan locked + implementation complete.
 
 ---
 
@@ -238,11 +266,14 @@ In Mode B, Phase 0 of PLAN.md = bootstrap (build the substrate prereqs in §11).
 
 ---
 
-## §9. AGENTS.md installation snippet
+## §9. Global agent-instruction snippet
 
-Paste into project AGENTS.md (or `CLAUDE.md` / `.cursorrules` / equivalent). Once.
+Appended **once per machine** to the user's global agent-instruction file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.cursor/.cursorrules`, etc.) — not per project. Auto-install happens via §0 bootstrap on first kickoff phrase; user does not paste manually.
+
+The marker (first line) is mandatory — `§0` greps for it to detect "installed" state.
 
 ```markdown
+<!-- kit:installed:v1 -->
 ## Spec-driven planning kit — explicit kickoff only
 
 Until kickoff, treat requests normally. No kit, no PLAN.md, no locks tally.
@@ -255,22 +286,44 @@ Kickoff phrases:
 
 After kickoff, all of these fire automatically:
 - Right-sizing classification (trivial / feature / greenfield)
-- Lock-iteration loop with mandatory recommendation format
+- Lock-iteration loop with mandatory recommendation format:
+    Decision: <one-line question>
+    Recommendation: <choice>
+    Convention basis: <tag>     (e.g. "ADR (Nygard 2011)", "12-factor §III", "no direct convention; closest analog: X")
+    Tradeoff: <one-line: what you give up>
 - Convention citation (tag-only) on every recommendation
-- User-suggestion mapping when user proposes solutions
-- Stuck-prompts after 2+ stalled rounds
-- AI-dense rewrite when locks_remaining = 0
-- PLAN.md write
-- PROGRESS.md create (multi-session features only)
-- Phase-close promote-and-reset
+- User-suggestion mapping when user proposes solutions mid-iteration:
+    You suggested: <user's idea>
+    Industry pattern match: <pattern X | "no match — novel territory">
+    Source: <citation>
+    Equivalent / closest fit: <how the pattern would solve the same problem>
+    Recommendation: <adopt | modify | proceed novel and document why>
+- Stuck-prompts after 2+ stalled rounds (assumption reframe / no-compat lock / convention audit / AI-dense rewrite)
+- AI-dense rewrite when locks_remaining = 0 ("Prioritize AI compatibility formatting, human readability is not required.")
+- PLAN.md write (template in kit §6)
+- PROGRESS.md create + maintain (multi-session features only; template in kit §7)
+- Phase-close promote-and-reset (kit §10): migrate mid-impl decisions/surprises to PLAN.md risk register or AGENTS.md trap entries; discard sub-task checklist + commit log; collapse state-of-branch to 1-line phase plan entry; reset PROGRESS.md to next-phase template; commit `plan: phase <N> close — promote-and-reset`
 - Resume on "continue" / "where were we" reads PLAN + PROGRESS
 
-Kit reference: spec-driven-planning-kit.md (project root)
-
-Plan-edit commit format:
+Plan-edit commit format (kit §13):
 - plan: lock #N — <decision>     (new lock)
-- plan: lock #N revised — old → new + reference to original commit
-- plan: phase <N> close — promote-and-reset + promotion list
+    Convention basis: <tag>
+    Alternatives considered:
+      - <alt 1> — <rejected because>
+    Tradeoff: <what we give up>
+- plan: lock #N revised — <old> → <new>
+    Reason: <new evidence / changed constraint>
+    Original rationale: see commit <hash>
+- plan: phase <N> close — promote-and-reset
+    (lists what was promoted to risks / traps / discarded)
+
+Density signals (kit §12) — agent surfaces, user decides:
+- Same fact stated three ways → densify
+- Section reader scrolls past to find current state → restructure
+- Closing-phase debris accumulating → trigger promote-and-reset
+- Reader can't find current state in ~30 sec scroll → restructure
+
+Kit file location: pointed at by user on first kickoff (e.g. ~/spec-driven-planning-kit/spec-driven-planning-kit.md). Agent reads it once for full reference; this snippet alone is enough for normal operation. For deep-dive on any specific section, agent re-reads the kit file on demand.
 ```
 
 ---

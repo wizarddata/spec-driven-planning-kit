@@ -8,13 +8,31 @@ Single-document portable kit for solo + AI planning of features and full project
 
 ## Install
 
-1. Copy `spec-driven-planning-kit.md` into your project root (or keep one global copy)
-2. Paste the §9 installation snippet into your project's `AGENTS.md` (or `CLAUDE.md` / `.cursorrules` / equivalent)
-3. Done
+One time per computer. No manual paste.
+
+1. Pull the kit anywhere on disk:
+
+   ```sh
+   git clone https://github.com/wizarddata/spec-driven-planning-kit ~/spec-driven-planning-kit
+   ```
+
+   (Or any path you like — agent only needs to be able to read it.)
+
+2. First time you want to use the kit in any project, tell your agent:
+
+   > use the kit at ~/spec-driven-planning-kit/spec-driven-planning-kit.md
+
+3. Agent reads the kit, runs the §0 install bootstrap, and prompts:
+
+   > Spec-driven planning kit not installed in your global agent-instruction file. Install §9 snippet now (one-time per machine, ~50 lines)? [y/N]
+
+4. Answer `y`. Agent appends the snippet to your global agent-instruction file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.cursor/.cursorrules`, etc.) with marker `<!-- kit:installed:v1 -->`.
+
+5. Done forever. Every future session in every project auto-loads the snippet via the global file. No re-paste, no per-project setup.
 
 ## Use
 
-Until you invoke the kit explicitly, the agent treats requests normally — no documentation overhead on simple fixes.
+Until you fire a kickoff phrase, the agent treats requests normally — no kit overhead on simple fixes.
 
 Kickoff phrases:
 - `/kit <feature>`
@@ -22,7 +40,11 @@ Kickoff phrases:
 - `"use the kit"`
 - `"engage the kit"`
 
-After kickoff, the agent runs the full lock-iteration loop, writes `PLAN.md`, and (for multi-session features) maintains `PROGRESS.md`. See the kit for details.
+After kickoff (and one-time install if needed), the agent runs the full lock-iteration loop, writes `PLAN.md`, and (for multi-session features) maintains `PROGRESS.md`. See the kit for details.
+
+## Update
+
+Future kit revisions bump the marker (`v1` → `v2`). On next kickoff after a kit revision, agent detects stale marker and prompts to upgrade — re-pastes new snippet, replaces old block. Re-running install is always safe (idempotent).
 
 ## Philosophy
 
