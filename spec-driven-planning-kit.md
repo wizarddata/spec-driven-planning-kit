@@ -1,6 +1,6 @@
 # Spec-Driven Planning Kit
 
-Agent reads this file and follows §1..§7 when planning a feature.
+Agent reads this file and follows §1..§7 when planning an implementation.
 
 **Tool agnosticism:** Substitute your tool's agent-instruction filename (`CLAUDE.md`, `.cursorrules`, `GEMINI.md`, etc.) for `AGENTS.md`.
 
@@ -8,9 +8,9 @@ Agent reads this file and follows §1..§7 when planning a feature.
 
 ## §1. Kickoff
 
-User invokes via `"use the kit at <path> to plan <feature>"`. Agent reads kit and follows §1..§7.
+User invokes via `"use the kit at <path> to plan <implementation>"`. Agent reads kit and follows §1..§7.
 
-For a feature in flight (PLAN.md present): no re-kickoff. Agent reads PLAN; the `## Kit conventions` header (§4) is part of every PLAN. Resume command "read .../*IMPLEMENTATION NAME*/PLAN.md and PROGRESS.md, resume Phase 3".
+For an implementation in flight (PLAN.md present): no re-kickoff. Agent reads PLAN; the `## Kit conventions` header (§4) is part of every PLAN. Resume command "read .../*IMPLEMENTATION NAME*/PLAN.md and PROGRESS.md, resume Phase 3".
 
 ## §2. Sweep-vs-bend
 
@@ -68,7 +68,7 @@ Agent fires autonomously when conditions hit. User can fire manually.
 ## §4. PLAN.md template
 
 ```markdown
-# <feature> — Plan
+# <implementation> — Plan
 
 > **Decision rationale:** `git log -- PLAN.md`.
 
@@ -153,7 +153,7 @@ Active risks only. Resolved risks discarded or strikethrough.
 ## §5. PROGRESS.md template (active phase only)
 
 ```markdown
-# <feature> — Progress
+# <implementation> — Progress
 
 > Conventions live in PLAN.md "Kit conventions" header. Do not duplicate.
 
