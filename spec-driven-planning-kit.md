@@ -77,7 +77,7 @@ status: planning | active | done
 revised: YYYY-MM-DD
 ```
 
-## Kit conventions (do not delete)
+## Kit conventions (do not delete — survives context clears, do not deduplicate)
 
 > Header copied verbatim into every PLAN.md.
 
