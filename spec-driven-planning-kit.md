@@ -1,6 +1,6 @@
 # Spec-Driven Planning Kit
 
-Agent reads this file and follows §1..§9 when planning a feature.
+Agent reads this file and follows §1..§7 when planning a feature.
 
 **Tool agnosticism:** Substitute your tool's agent-instruction filename (`CLAUDE.md`, `.cursorrules`, `GEMINI.md`, etc.) for `AGENTS.md`.
 
@@ -8,7 +8,7 @@ Agent reads this file and follows §1..§9 when planning a feature.
 
 ## §1. Kickoff
 
-User invokes via `"use the kit at <path> to plan <feature>"`. Agent reads kit and follows §1..§9.
+User invokes via `"use the kit at <path> to plan <feature>"`. Agent reads kit and follows §1..§7.
 
 For a feature in flight (PLAN.md present): no re-kickoff. Agent reads PLAN; the `## Kit conventions` header (§4) is part of every PLAN. Resume command "read .../*IMPLEMENTATION NAME*/PLAN.md and PROGRESS.md, resume Phase 3".
 
@@ -49,6 +49,8 @@ COST  L    bend  bend   judge
 
 Notes field required on every row. One line: greenfield version + concrete blocking cost (LOC count, file count, trap reference, dependency name).
 
+**Uncertainty tag:** when cost or benefit was a default-M (AI uncertain on bucket), append `(default-M)` to Notes. User reviews post-lock and can override the bucket.
+
 **User-suggestion mapping rule:** when the user proposes a solution mid-planning (not just answering Y/N), the agent buckets the suggestion's cost + benefit per the matrix BEFORE evaluating, and outputs the verdict (`bend` / `judge` / `sweep`) alongside the response.
 
 ---
@@ -57,11 +59,9 @@ Notes field required on every row. One line: greenfield version + concrete block
 
 Agent fires autonomously when conditions hit. User can fire manually.
 
-- Stall (2+ rounds on a decision) → ask: *"Bucket cost + benefit per §2 matrix. If you can't tell S vs M, default M."*
 - Cost or benefit not bucketed → ask: *"Pick S/M/L for each. Anchor to LOC count, file count, or trap reference."*
 - Verdict = `sweep`, agent attempted to lock the bend anyway → ask: *"Verdict sweep. Halt planning. Output sweep alternative to user."*
 - Verdict = `judge` → ask: *"Judgment call. Output cost+benefit to user. Do not lock alone."*
-- Spec drafted but prose-heavy → ask: *"Prioritize AI compatibility formatting, human readability is not required."*
 
 ---
 
@@ -93,7 +93,11 @@ revised: YYYY-MM-DD
     COST  L    bend  bend   judge
     ```
   - **Verdict actions:** bend → record + continue. judge → surface cost+benefit, await user lock. sweep → halt planning, surface alternative.
-  - **Lock-table row format:** `| # | Decision | Sweep cost | Sweep benefit | Verdict | Notes |`. Notes required, one line: greenfield version + concrete blocking cost.
+  - **Lock-table row format:** `| # | Decision | Sweep cost | Sweep benefit | Verdict | Notes |`. Notes required, one line: greenfield version + concrete blocking cost. Append `(default-M)` to Notes when bucket was an uncertainty default.
+- **Doc style** (every kit-managed doc):
+  - **WHAT, not WHY.** State current behavior + scope. Reasoning only in dedicated "Rationale" section if needed.
+  - **Structure beats prose.** Tables for compares. Fenced code blocks. Lists for sets. Walls of text = restructure.
+  - **Brief.** Cut filler, hedging, future-tense narration, "we"/"let's", trailing summaries.
 - **User-suggestion mapping**: bucket cost + benefit per matrix BEFORE evaluating user proposal. Output verdict.
 - **Plan-edit commits**:
     - `plan: <area> — <change>`
@@ -102,13 +106,11 @@ revised: YYYY-MM-DD
     - Cost or benefit not bucketed → *"Pick S/M/L. Default M if unsure. Anchor to LOC count, file count, or trap reference."*
     - Verdict = sweep, attempted bend lock → *"Verdict sweep. Halt planning. Output sweep alternative."*
     - Verdict = judge → *"Judgment call. Output cost+benefit. Do not lock alone."*
-    - Draft prose-heavy → *"Prioritize AI compatibility formatting, human readability is not required."*
-- **Promote-and-reset (phase close)**: migrate mid-impl decisions/surprises → PLAN risks or AGENTS traps; discard sub-tasks + commit log; collapse state-of-branch → 1-line phase plan entry; reset PROGRESS to next phase. **Sweep tally:** count `sweep` verdicts in phase (target 0; non-zero → flag in PROGRESS); each `judge` verdict must cite explicit user-confirmed lock in commit log; same constraint pinning ≥3 `bend` verdicts → append to PROGRESS "sweep candidates" subsection for next branch.
-- **Density signals**: same fact 3 ways → densify; reader scrolls past current state → restructure; closing-phase debris → promote-and-reset.
+- **Promote-and-reset** (user-fired at phase close): migrate mid-impl decisions/surprises → PLAN risks or AGENTS traps; discard sub-tasks + commit log; collapse state-of-branch → 1-line phase plan entry; reset PROGRESS to next phase.
 
 ## §1. Glossary
 
-5-15 named concepts, one line each. Domain vocabulary the spec uses without re-defining.
+Named concepts, one line each. Domain vocabulary the spec uses without re-defining.
 
 ## §2. Closed enums
 
@@ -171,13 +173,13 @@ Active risks only. Resolved risks discarded or strikethrough.
 <one paragraph after major commits — most recent only, prior overwritten>
 ```
 
-PROGRESS.md never accumulates. See §6.
+PROGRESS.md never accumulates. User fires promote-and-reset at phase close (§6).
 
 ---
 
 ## §6. Promote-and-reset
 
-When phase closes, agent runs autonomously:
+User-fired at phase close. Agent runs:
 
 1. **Mid-impl decisions / surprises** → migrate to PLAN.md risk register OR AGENTS.md trap entries (whichever fits).
 2. **Sub-task checklist** → discard.
@@ -185,30 +187,14 @@ When phase closes, agent runs autonomously:
 4. **State-of-branch checkpoint** → collapse to 1-line phase plan entry in PLAN.md (`Phase 2 shipped: <demo>`).
 5. **PROGRESS.md** → reset to next phase template (header + empty sub-tasks).
 
-Phase rollover commits with format from §8:
+Phase rollover commits with format from §7:
 ```
 plan: phase 2 close — promote-and-reset
 ```
 
 ---
 
-## §7. Density signals
-
-Watch for content-aware signals:
-
-| Signal | Action |
-|---|---|
-| Same fact stated three ways | Densify the section |
-| Prose paragraph that could be a 4-row table | Convert to table |
-| Reader can't find current state quickly (scroll past, or >~30s of scroll) | Restructure (move active to top, archive resolved) |
-| Closing-phase debris (sub-tasks, commits, checkpoints) accumulating | Trigger promote-and-reset |
-| Risks registered then resolved still in active section | Archive resolved or strikethrough |
-
-Agent surfaces signals as one-liners: `"PLAN.md §6 has redundancy. Densify? [y/N]"`. User chooses; no enforcement.
-
----
-
-## §8. Git commit conventions for plan changes
+## §7. Git commit conventions for plan changes
 
 PLAN.md changes commit separately from code (one logical change per commit).
 
