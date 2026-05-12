@@ -2,6 +2,8 @@
 
 Portable, tool-agnostic kit for solo + AI planning. Two stages: scoping (problem → `SCOPE.md`) and implementation planning (`PLAN.md` + `PROGRESS.md`).
 
+dev branch contains WIP workflow changes to optimize token overhead or improve consistency
+
 ## Contents
 
 | File | Purpose |
