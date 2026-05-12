@@ -8,9 +8,11 @@ Agent reads this file and follows §1..§7 when planning an implementation.
 
 ## §1. Kickoff
 
-User invokes via `"use the kit at <path> to plan <implementation>"`. Agent reads kit and follows §1..§7.
+User invokes via `"use the kit at <path> to plan <implementation>"`. Agent reads kit and follows §1..§7. Kickoff writes both PLAN.md (canonical spec) and PROGRESS.md (Phase 1 working slice extracted from PLAN).
 
-For an implementation in flight (PLAN.md present): no re-kickoff. Agent reads PLAN; the `## Kit conventions` header (§4) is part of every PLAN. Resume command "read .../*IMPLEMENTATION NAME*/PLAN.md and PROGRESS.md, resume Phase 3".
+For an implementation in flight: no re-kickoff. **Resume reads PROGRESS.md only**. PLAN.md is read-only during a phase; it is only loaded at phase boundaries (close + extract next slice). Resume command: `read <path>/PROGRESS.md, resume`.
+
+The `## Kit conventions` header (§4) is copied verbatim into BOTH PLAN.md and PROGRESS.md so conventions survive context clears regardless of which file is loaded.
 
 ## §2. Sweep-vs-bend
 
@@ -100,13 +102,14 @@ revised: YYYY-MM-DD
   - **Brief.** Cut filler, hedging, future-tense narration, "we"/"let's", trailing summaries.
 - **User-suggestion mapping**: bucket cost + benefit per matrix BEFORE evaluating user proposal. Output verdict.
 - **Plan-edit commits**:
-    - `plan: <area> — <change>`
-    - `plan: phase <N> close`
+    - `plan: <area> — <change>` (PLAN edits — only at kickoff or phase boundary)
+    - `plan: phase <N> close + extract phase <N+1>` (combined sync + extract)
 - **Stuck-prompts** (agent fires autonomously):
     - Cost or benefit not bucketed → *"Pick S/M/L. Default M if unsure. Anchor to LOC count, file count, or trap reference."*
     - Verdict = sweep, attempted bend lock → *"Verdict sweep. Halt planning. Output sweep alternative."*
     - Verdict = judge → *"Judgment call. Output cost+benefit. Do not lock alone."*
-- **Phase close** (user-fired): mark phase shipped in PLAN phase-plan table; reset PROGRESS header to next phase. Mid-impl surprises route immediately to risk register / AGENTS trap / code comment / open question / discard — never batched. No "phase close notes" or "mid-impl decisions" catch-all section.
+- **File roles**: PLAN.md = canonical spec, read-only during a phase. PROGRESS.md = active-phase working slice, the ONLY file read on resume. Mid-phase edits land in PROGRESS only.
+- **Phase close** (user-fired): sync PROGRESS deltas → PLAN; mark phase shipped; extract next phase slice → overwrite PROGRESS. PLAN write only happens at phase boundary. Mid-impl surprises route immediately to PROGRESS active risks / AGENTS trap / code comment / PROGRESS open question / discard — never batched. No catch-all "phase close notes" or "mid-impl decisions" section.
 
 ## §1. Closed enums
 
@@ -154,40 +157,86 @@ Active risks only. Resolved risks discarded or strikethrough.
 
 ---
 
-## §5. PROGRESS.md template (active phase pointer only)
+## §5. PROGRESS.md template (active-phase working slice)
+
+PROGRESS holds everything needed to resume work on the active phase WITHOUT loading PLAN.md. Slice is extracted from PLAN.md at phase boundary (see §6) and carries: kit conventions, active phase lock table, file scope, test additions, active risks (incl. multi-phase risks carrying forward), open questions, schema-lock pointer.
 
 ```markdown
 # <implementation> — Progress
 
-> Conventions live in PLAN.md "Kit conventions" header. Do not duplicate.
+## Kit conventions
+
+> Copied verbatim from PLAN.md §4 conventions header. Survives context clears.
+
+<full conventions header — same content as PLAN.md>
 
 ## Phase N — <name>
 
-(See PLAN phase scope for task list. Done-state derives from `git log` + code/grep against each PLAN lock-row's promised artifact.)
+### Lock table
+
+| # | Decision | Sweep cost | Sweep benefit | Verdict | Notes |
+|---|----------|-----------|--------------|---------|-------|
+| N1 | ... | ... | ... | ... | ... |
+
+### File scope
+
+```yaml
+new:      [...]
+modified: [...]
+deleted:  [...]
 ```
 
-PROGRESS holds only the active phase pointer. No sub-task checklist, no commit log, no mid-impl decisions log, no state-of-branch narrative — all re-derivable from PLAN + git + code. Mid-impl surprises route immediately (see §6).
+### Test additions
+
+- ...
+
+### Active risks (this phase + carry-forwards)
+
+- R<n> — ...
+
+### Open questions blocking this phase
+
+- ...
+
+### Boundary metadata
+
+- `schema-lock: <repo-path>`
+- `plan-source: PLAN.md §<area>`
+```
+
+Mid-phase edits land in PROGRESS only. PLAN.md is read-only during a phase. New risks, new open questions, scope amendments all touch PROGRESS. At phase close, deltas sync back to PLAN (§6).
 
 ---
 
 ## §6. Phase close + mid-impl routing
 
-**Phase close** (user-fired). Agent runs:
+**Phase close** (user-fired). Agent runs the sync-and-extract ritual:
 
-1. Mark phase shipped in PLAN.md phase plan (`phase_N: { shipped: true, demo: "..." }`).
-2. Reset PROGRESS.md header to next phase.
+1. **Sync PROGRESS deltas → PLAN.md.** Merge mid-phase additions back into PLAN:
+   - New risks in PROGRESS active-risks list → append to PLAN risk register (tagged active for downstream phases if multi-phase).
+   - Resolved risks → delete from PLAN.
+   - New open questions → PLAN open questions section.
+   - Lock-table amendments → update PLAN active-phase section.
+2. **Mark phase shipped** in PLAN.md phase plan (`phase_N: { shipped: true, demo: "..." }`).
+3. **Extract next phase slice from PLAN.md** → overwrite PROGRESS.md with:
+   - Kit conventions header (verbatim copy from PLAN §4).
+   - Next phase's lock table, file scope, test additions.
+   - Carry-forward active risks (PLAN risks tagged for phase N+1).
+   - Open questions blocking phase N+1.
+   - Boundary metadata (schema-lock path, plan-source pointer).
+4. **Commit PLAN.md + PROGRESS.md together** (§7 close format).
 
-Phase rollover commit format in §7.
+After step 4, resume from PROGRESS picks up at phase N+1 without re-loading PLAN.
 
-**Mid-impl surprise routing** (continuous, NOT batched at phase close). Every deviation from PLAN routes immediately to exactly one of:
+**Mid-impl surprise routing** (continuous, never batched). Every deviation routes IMMEDIATELY to exactly one of:
 
-- **PLAN.md risk register** — active future-phase risk.
+- **PROGRESS active risks** — phase-bounded risk emerging during this phase.
 - **AGENTS.md trap entry** — cross-phase pattern future code must reuse or avoid.
 - **Code comment at site** — single-site implementation detail.
-- **PLAN.md open question** — TODO requiring user decision.
+- **PROGRESS open questions** — TODO requiring user decision.
 - **Discard** — one-shot historical fact with no audit value.
 
-No "phase close notes" or "mid-impl decisions" catch-all section. Categorize at the moment of notice.
+PLAN.md is **read-only during a phase**. The sync ritual at phase close is the only write opportunity. No "phase close notes" or "mid-impl decisions" catch-all sections allowed in either file.
 
 ---
 
@@ -202,8 +251,8 @@ plan: <area> — <change>
 
 **Phase close:**
 ```
-plan: phase <N> close
+plan: phase <N> close + extract phase <N+1>
 ```
 
-Body optional — phase plan entry update is the meaningful diff.
+Single commit touches both PLAN.md (sync + mark shipped) and PROGRESS.md (overwrite w/ next phase slice). Body optional — file diff carries the meaningful content.
 
