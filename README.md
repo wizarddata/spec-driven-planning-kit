@@ -26,15 +26,15 @@ Agent runs Rules 1-7, brainstorms feature-gap pass, writes `SCOPE.md`
 use the kit at <path>/spec-driven-planning-kit.md to plan <implementation>
 ```
 
-Agent reads §1..§7, runs sweep-vs-bend lock loop, writes `PLAN.md` (with `## Kit conventions` header auto-included). For multi-session implementations, also maintains `PROGRESS.md`.
+Agent reads §1..§7, runs sweep-vs-bend lock loop, writes `PLAN.md` (canonical spec) AND seeds `PROGRESS.md` with the Phase 1 working slice. Kit conventions header is copied into both files so context-clear resumes get conventions regardless of which file loads.
 
 ### Resuming an implementation in flight after context clear
 
 ```
-read <path>/PLAN.md and PROGRESS.md, resume
+read <path>/PROGRESS.md, resume
 ```
 
-No re-kickoff. The `## Kit conventions` header lives inside `PLAN.md`, so conventions reload on every resume.
+Only `PROGRESS.md` loads on resume. `PLAN.md` stays cold during a phase; it is touched only at phase boundaries (close + extract next phase slice). Per-resume token cost stays bounded to the active phase's working slice.
 
 ## Tool agnosticism
 
@@ -49,3 +49,13 @@ Substitute your agent's instruction filename (`CLAUDE.md`, `.cursorrules`, `GEMI
 ├── PROGRESS.md         # active-phase scratchpad
 └── README.md           # minimal pointer
 ```
+
+## Gotchas (relevent to user only)
+
+If context is cleared and implementation planning resumed, AI will consistently attempt to populate the rest of the implementation plan automatically, without user input, in fresh session. TODO: workaround needed
+
+If decision making paradigms / lock formatting is modified from default behavior, will not persist if planning is resumed across multiple sessions.
+
+for now: complete scope and planning each in single context for continuity
+
+for very large project, consider breaking phase plan into sub-documents for each section, then referencing in PLAN.md, save on context per session. Scope is cheaper than kit, maybe iterate scope into sub-scopes?
