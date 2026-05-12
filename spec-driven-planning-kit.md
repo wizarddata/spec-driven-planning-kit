@@ -135,6 +135,8 @@ phase_2: ...
 
 ## File scope
 
+Paths only. No per-file purpose comments. Agent re-derives purpose by reading file on demand.
+
 ```yaml
 new:      [...]
 modified: [...]
