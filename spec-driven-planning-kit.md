@@ -108,19 +108,21 @@ revised: YYYY-MM-DD
     - Verdict = judge → *"Judgment call. Output cost+benefit. Do not lock alone."*
 - **Promote-and-reset** (user-fired at phase close): migrate mid-impl decisions/surprises → PLAN risks or AGENTS traps; discard sub-tasks + commit log; collapse state-of-branch → 1-line phase plan entry; reset PROGRESS to next phase.
 
-## §1. Glossary
-
-Named concepts, one line each. Domain vocabulary the spec uses without re-defining.
-
-## §2. Closed enums
+## §1. Closed enums
 
 Every union type, exhaustively listed. Anti-hallucination guardrail.
 
-## §3. Schema
+## §2. Schema lock
 
-Canonical data shape. JSONC with comments OK. Discriminated unions explicit.
+Canonical data shape lives as typed source in repo (path varies by language: `schema/types.ts`, `schema/*.proto`, `pkg/schema/*.go`, etc.). PLAN.md keeps a 1-line pointer:
 
-## §4-N. Subsystems
+```
+schema-lock: <repo-path>
+```
+
+Project's type-checker / build system enforces conformance. Discriminated unions explicit in source. Drift between PLAN and code impossible — the code IS the spec.
+
+## §3-N. Subsystems
 
 One section per concern.
 
