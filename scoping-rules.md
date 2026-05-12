@@ -9,8 +9,7 @@
 | 3 | **Existing tools first.** Parallel research agents eval off-shelf before any custom build. "Build" is verdict, not default. |
 | 4 | **Concept-only docs at planning.** Skip risk tables, LOC budgets, file scope, enums, schema. See Output section for SCOPE.md sections. |
 | 5 | **Lock decisions one at time.** Each topic gets explicit user confirm ("lock", "skip MVP", "drop") before moving on. |
-| 6 | **Research as data, not prose.** Machine-readable JSON in `docs/research/<date>-findings.json`. Skip pretty markdown reports — waste tokens on re-reads. |
-| 7 | **Push back honestly. Admit wrong fast.** Challenge bad ideas with reasons. Correct mistakes moment they surface. No saving face. |
+| 6 | **Push back honestly. Admit wrong fast.** Challenge bad ideas with reasons. Correct mistakes moment they surface. No saving face. |
 
 ## Caveman doc style
 
@@ -29,13 +28,11 @@ After initial scope locked, brainstorm likely-missed candidates before declaring
 - stack (table)
 - features in / features out
 - locked decisions
-- pointer to `docs/research/` for raw findings
 
 ## Project folder convention
 
 ```
 <TARGET>_<PURPOSE>_<INTERFACE>/
 ├── SCOPE.md           # output of scoping-rules
-├── README.md          # minimal pointer
-└── docs/research/     # machine-readable JSON findings
+└── README.md          # minimal pointer
 ```
