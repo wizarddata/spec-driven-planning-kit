@@ -101,12 +101,12 @@ revised: YYYY-MM-DD
 - **User-suggestion mapping**: bucket cost + benefit per matrix BEFORE evaluating user proposal. Output verdict.
 - **Plan-edit commits**:
     - `plan: <area> — <change>`
-    - `plan: phase <N> close — promote-and-reset`
+    - `plan: phase <N> close`
 - **Stuck-prompts** (agent fires autonomously):
     - Cost or benefit not bucketed → *"Pick S/M/L. Default M if unsure. Anchor to LOC count, file count, or trap reference."*
     - Verdict = sweep, attempted bend lock → *"Verdict sweep. Halt planning. Output sweep alternative."*
     - Verdict = judge → *"Judgment call. Output cost+benefit. Do not lock alone."*
-- **Promote-and-reset** (user-fired at phase close): migrate mid-impl decisions/surprises → PLAN risks or AGENTS traps; discard sub-tasks + commit log; collapse state-of-branch → 1-line phase plan entry; reset PROGRESS to next phase.
+- **Phase close** (user-fired): mark phase shipped in PLAN phase-plan table; reset PROGRESS header to next phase. Mid-impl surprises route immediately to risk register / AGENTS trap / code comment / open question / discard — never batched. No "phase close notes" or "mid-impl decisions" catch-all section.
 
 ## §1. Closed enums
 
@@ -154,47 +154,40 @@ Active risks only. Resolved risks discarded or strikethrough.
 
 ---
 
-## §5. PROGRESS.md template (active phase only)
+## §5. PROGRESS.md template (active phase pointer only)
 
 ```markdown
 # <implementation> — Progress
 
 > Conventions live in PLAN.md "Kit conventions" header. Do not duplicate.
 
-## Phase 1 — <name>
+## Phase N — <name>
 
-### Sub-tasks
-- [ ] T1 — <thing>
-- [ ] T2 — ...
-
-### Commit log
-<hash> phase1: <area> — <change>
-
-### Mid-impl decisions / surprises
-- <deviation> — <reason>
-
-### State-of-branch checkpoint
-<one paragraph after major commits — most recent only, prior overwritten>
+(See PLAN phase scope for task list. Done-state derives from `git log` + code/grep against each PLAN lock-row's promised artifact.)
 ```
 
-PROGRESS.md never accumulates. User fires promote-and-reset at phase close (§6).
+PROGRESS holds only the active phase pointer. No sub-task checklist, no commit log, no mid-impl decisions log, no state-of-branch narrative — all re-derivable from PLAN + git + code. Mid-impl surprises route immediately (see §6).
 
 ---
 
-## §6. Promote-and-reset
+## §6. Phase close + mid-impl routing
 
-User-fired at phase close. Agent runs:
+**Phase close** (user-fired). Agent runs:
 
-1. **Mid-impl decisions / surprises** → migrate to PLAN.md risk register OR AGENTS.md trap entries (whichever fits).
-2. **Sub-task checklist** → discard.
-3. **Commit log block** → discard.
-4. **State-of-branch checkpoint** → collapse to 1-line phase plan entry in PLAN.md (`Phase 2 shipped: <demo>`).
-5. **PROGRESS.md** → reset to next phase template (header + empty sub-tasks).
+1. Mark phase shipped in PLAN.md phase plan (`phase_N: { shipped: true, demo: "..." }`).
+2. Reset PROGRESS.md header to next phase.
 
-Phase rollover commits with format from §7:
-```
-plan: phase 2 close — promote-and-reset
-```
+Phase rollover commit format in §7.
+
+**Mid-impl surprise routing** (continuous, NOT batched at phase close). Every deviation from PLAN routes immediately to exactly one of:
+
+- **PLAN.md risk register** — active future-phase risk.
+- **AGENTS.md trap entry** — cross-phase pattern future code must reuse or avoid.
+- **Code comment at site** — single-site implementation detail.
+- **PLAN.md open question** — TODO requiring user decision.
+- **Discard** — one-shot historical fact with no audit value.
+
+No "phase close notes" or "mid-impl decisions" catch-all section. Categorize at the moment of notice.
 
 ---
 
@@ -209,15 +202,8 @@ plan: <area> — <change>
 
 **Phase close:**
 ```
-plan: phase <N> close — promote-and-reset
-
-Promoted to PLAN.md risk register:
-- <decision> — <why load-bearing>
-Promoted to AGENTS.md trap entries:
-- <trap> — <why future readers need it>
-Discarded:
-- Sub-task checklist
-- Commit log
-- State-of-branch (collapsed to phase plan one-liner)
+plan: phase <N> close
 ```
+
+Body optional — phase plan entry update is the meaningful diff.
 
