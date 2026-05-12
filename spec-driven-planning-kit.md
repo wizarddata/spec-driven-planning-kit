@@ -104,7 +104,9 @@ revised: YYYY-MM-DD
 - **User-suggestion mapping**: bucket cost + benefit per matrix BEFORE evaluating user proposal. Output verdict.
 - **Plan-edit commits**:
     - `plan: <area> — <change>` (PLAN edits — only at kickoff or phase boundary)
-    - `plan: phase <N> close + extract phase <N+1>` (combined sync + extract)
+    - `plan: phase <N> sync` (close commit 1 — PLAN.md only: merge PROGRESS deltas + mark shipped)
+    - `plan: extract phase <N+1>` (close commit 2 — PROGRESS.md only: overwrite w/ next phase slice)
+    - Phase close runs both commits in same session. Do NOT /clear mid-ritual.
 - **Stuck-prompts** (agent fires autonomously):
     - Cost or benefit not bucketed → *"Pick S/M/L. Default M if unsure. Anchor to LOC count, file count, or trap reference."*
     - Verdict = sweep, attempted bend lock → *"Verdict sweep. Halt planning. Output sweep alternative."*
@@ -211,7 +213,9 @@ Mid-phase edits land in PROGRESS only. PLAN.md read-only during phase. New risks
 
 ## §6. Phase close + mid-impl routing
 
-**Phase close** (user-fired). Agent runs sync-and-extract ritual:
+**Phase close** (user-fired). Two-commit ritual in single session. Do NOT /clear mid-ritual — mid-ritual context clear loses sync state.
+
+**Commit 1 — sync** (PLAN.md only):
 
 1. **Sync PROGRESS deltas → PLAN.md.** Merge mid-phase additions back into PLAN:
    - New risks in PROGRESS active-risks list → append to PLAN risk register (tag active for downstream phases if multi-phase).
@@ -219,15 +223,21 @@ Mid-phase edits land in PROGRESS only. PLAN.md read-only during phase. New risks
    - New open questions → PLAN open questions section.
    - Lock-table amendments → update PLAN active-phase section.
 2. **Mark phase shipped** in PLAN.md phase plan (`phase_N: { shipped: true, demo: "..." }`).
-3. **Extract next phase slice from PLAN.md** → overwrite PROGRESS.md with:
+3. Commit: `plan: phase <N> sync`.
+
+**Commit 2 — extract** (PROGRESS.md only):
+
+1. **Overwrite PROGRESS.md with next phase slice from PLAN.md:**
    - Kit conventions header (verbatim copy from PLAN §4).
    - Next phase's lock table, file scope, test additions.
    - Carry-forward active risks (PLAN risks tagged for phase N+1).
    - Open questions blocking phase N+1.
    - Boundary metadata (schema-lock path, plan-source pointer).
-4. **Commit PLAN.md + PROGRESS.md together** (§7 close format).
+2. Commit: `plan: extract phase <N+1>`.
 
-After step 4, resume from PROGRESS picks up at phase N+1 without re-loading PLAN.
+Bad extract → revert commit 2 without losing commit 1's sync.
+
+After commit 2, resume from PROGRESS picks up at phase N+1 without re-loading PLAN.
 
 **Mid-impl surprise routing** (continuous, never batched). Every deviation routes IMMEDIATELY to exactly one of:
 
@@ -250,9 +260,10 @@ PLAN.md changes commit separately from code (one logical change per commit).
 plan: <area> — <change>
 ```
 
-**Phase close:**
+**Phase close** (two commits in same session — see §6):
 ```
-plan: phase <N> close + extract phase <N+1>
+plan: phase <N> sync           (PLAN.md only: merge deltas + mark shipped)
+plan: extract phase <N+1>      (PROGRESS.md only: overwrite with next phase slice)
 ```
 
-Single commit touches both PLAN.md (sync + mark shipped) and PROGRESS.md (overwrite w/ next phase slice). Body optional — file diff carries meaningful content.
+Two-commit pattern gives revert granularity. Bad extract reverts without losing sync. Body optional — file diff carries meaningful content.
