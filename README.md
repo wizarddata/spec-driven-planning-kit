@@ -7,7 +7,7 @@ Portable, tool-agnostic kit for solo + AI planning. Two stages: scoping (problem
 | File | Purpose |
 |---|---|
 | [`scoping-rules.md`](./scoping-rules.md) | Stage 1: problem framing, option surfacing, `SCOPE.md` output. |
-| [`spec-driven-planning-kit.md`](./spec-driven-planning-kit.md) | Stage 2: sweep-vs-bend lock loop, `PLAN.md` + `PROGRESS.md` templates, promote-and-reset, commit conventions. |
+| [`spec-driven-planning-kit.md`](./spec-driven-planning-kit.md) | Stage 2: sweep-vs-bend lock loop, `PLAN.md` + `PROGRESS.md` templates, phase close + extract ritual, commit conventions. |
 
 
 ## Use
@@ -46,16 +46,13 @@ Substitute your agent's instruction filename (`CLAUDE.md`, `.cursorrules`, `GEMI
 <TARGET>_<PURPOSE>_<INTERFACE>/
 ├── SCOPE.md            # Stage 1 output
 ├── PLAN.md             # Stage 2 output (per implementation)
-├── PROGRESS.md         # active-phase scratchpad
+├── PROGRESS.md         # active-phase working slice (only file read on resume)
 └── README.md           # minimal pointer
 ```
 
-## Gotchas (relevent to user only)
+## Gotchas
 
-If context is cleared and implementation planning resumed, AI will consistently attempt to populate the rest of the implementation plan automatically, without user input, in fresh session. TODO: workaround needed
-
-If decision making paradigms / lock formatting is modified from default behavior, will not persist if planning is resumed across multiple sessions.
-
-for now: complete scope and planning each in single context for continuity
-
-for very large project, consider breaking phase plan into sub-documents for each section, then referencing in PLAN.md, save on context per session. Scope is cheaper than kit, maybe iterate scope into sub-scopes?
+- **Scoping must finish in one session.** Scoping rules don't have a resume model. Mid-scope context clear loses Rule-5 lock state. Complete `SCOPE.md` before /clear.
+- **Custom kit modifications need both files.** Kit conventions header lives in BOTH `PLAN.md` and `PROGRESS.md`. Edit the header in one place only → drift on next phase resume. Sync both.
+- **Phase close in single session.** Two-commit ritual (sync + extract) must complete without /clear between them. Mid-ritual context clear would lose PROGRESS deltas before they sync to PLAN.
+- **Fresh-session auto-population risk.** Agent on a fresh context may attempt to populate the rest of the implementation plan automatically without user input. Resume command (`read <path>/PROGRESS.md, resume`) constrains scope but isn't bulletproof. Watch for unprompted PLAN writes mid-phase.
