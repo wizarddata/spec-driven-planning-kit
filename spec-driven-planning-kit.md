@@ -1,34 +1,34 @@
 # Spec-Driven Planning Kit
 
-Agent reads this file and follows §1..§7 when planning an implementation.
+Agent reads file, follows §1..§7 when planning implementation.
 
-**Tool agnosticism:** Substitute your tool's agent-instruction filename (`CLAUDE.md`, `.cursorrules`, `GEMINI.md`, etc.) for `AGENTS.md`.
+**Tool agnosticism:** substitute your tool's agent-instruction filename (`CLAUDE.md`, `.cursorrules`, `GEMINI.md`, etc.) for `AGENTS.md`.
 
 ---
 
 ## §1. Kickoff
 
-User invokes via `"use the kit at <path> to plan <implementation>"`. Agent reads kit and follows §1..§7. Kickoff writes both PLAN.md (canonical spec) and PROGRESS.md (Phase 1 working slice extracted from PLAN).
+User invokes: `"use kit at <path> to plan <implementation>"`. Agent reads kit, follows §1..§7. Kickoff writes PLAN.md (canonical spec) + PROGRESS.md (Phase 1 slice extracted from PLAN).
 
-For an implementation in flight: no re-kickoff. **Resume reads PROGRESS.md only**. PLAN.md is read-only during a phase; it is only loaded at phase boundaries (close + extract next slice). Resume command: `read <path>/PROGRESS.md, resume`.
+Implementation in flight: no re-kickoff. **Resume reads PROGRESS.md only.** PLAN.md read-only during phase; loads at phase boundaries (close + extract next slice). Resume command: `read <path>/PROGRESS.md, resume`.
 
-The `## Kit conventions` header (§4) is copied verbatim into BOTH PLAN.md and PROGRESS.md so conventions survive context clears regardless of which file is loaded.
+`## Kit conventions` header (§4) copied verbatim into BOTH PLAN.md and PROGRESS.md. Conventions survive context clears regardless of which file loads.
 
 ## §2. Sweep-vs-bend
 
-Every locked decision picks one of three verdicts — `bend`, `judge`, `sweep` — by bucketing cost and benefit on the matrix below. Forces explicit comparison of the chosen compromise against a clean-slate (greenfield) alternative; prevents the agent from silently accepting bent decisions when a refactor would be cheaper than the long-term debt.
+Every locked decision picks verdict — `bend`, `judge`, `sweep` — via cost/benefit matrix below. Forces explicit compare of compromise vs clean-slate (greenfield) alternative. Prevents silent accept of bent decisions when refactor cheaper than long-term debt.
 
-**Step 1 — bucket the sweep cost (blast radius of doing the greenfield version):**
+**Step 1 — bucket sweep cost** (blast radius of greenfield version):
 - **S** — ≤50 LOC, single subsystem, no migration.
-- **M** — 50-200 LOC OR multi-file refactor with no wire/data shape change.
-- **L** — >200 LOC OR wire/data shape change OR breaks a Trap-rated invariant.
+- **M** — 50-200 LOC OR multi-file refactor, no wire/data shape change.
+- **L** — >200 LOC OR wire/data shape change OR breaks Trap-rated invariant.
 
-**Step 2 — bucket the sweep benefit (gain from the greenfield version):**
-- **S** — cosmetic / naming / placement only.
+**Step 2 — bucket sweep benefit** (gain from greenfield):
+- **S** — cosmetic / naming / placement.
 - **M** — architectural cleanup; removes one bent constraint.
-- **L** — unblocks future work; removes a chain of bends; converts a trap into a non-issue.
+- **L** — unblocks future work; removes chain of bends; converts trap to non-issue.
 
-**Step 3 — look up the verdict:**
+**Step 3 — look up verdict:**
 
 ```
             BENEFIT
@@ -38,32 +38,32 @@ COST  M    bend  judge  sweep
 COST  L    bend  bend   judge
 ```
 
-**Step 4 — apply the verdict:**
+**Step 4 — apply verdict:**
 - `bend` → record locked decision; continue planning.
-- `judge` → output cost+benefit summary to user; await explicit lock; do not lock alone.
-- `sweep` → halt planning; output sweep alternative to user; do not lock until user confirms (continue with sweep, or override to bend).
+- `judge` → output cost+benefit summary; await explicit user lock; do not lock alone.
+- `sweep` → halt planning; output sweep alternative; do not lock until user confirms (continue with sweep, or override to bend).
 
-**Locked-decision row format** (used in PROGRESS.md "Locked decisions" tables):
+**Locked-decision row format** (PROGRESS.md "Locked decisions" tables):
 
 ```
 | # | Decision | Sweep cost | Sweep benefit | Verdict | Notes |
 ```
 
-Notes field required on every row. One line: greenfield version + concrete blocking cost (LOC count, file count, trap reference, dependency name).
+Notes required on every row. One line: greenfield version + concrete blocking cost (LOC count, file count, trap reference, dependency name).
 
-**Uncertainty tag:** when cost or benefit was a default-M (AI uncertain on bucket), append `(default-M)` to Notes. User reviews post-lock and can override the bucket.
+**Uncertainty tag:** cost or benefit was default-M (agent uncertain on bucket) → append `(default-M)` to Notes. User reviews post-lock, can override bucket.
 
-**User-suggestion mapping rule:** when the user proposes a solution mid-planning (not just answering Y/N), the agent buckets the suggestion's cost + benefit per the matrix BEFORE evaluating, and outputs the verdict (`bend` / `judge` / `sweep`) alongside the response.
+**User-suggestion mapping rule:** user proposes solution mid-planning (not Y/N answer) → agent buckets suggestion's cost+benefit per matrix BEFORE evaluating; outputs verdict (`bend` / `judge` / `sweep`) alongside response.
 
 ---
 
 ## §3. Stuck-prompts
 
-Agent fires autonomously when conditions hit. User can fire manually.
+Agent fires autonomously on hit. User can fire manually.
 
-- Cost or benefit not bucketed → ask: *"Pick S/M/L for each. Anchor to LOC count, file count, or trap reference."*
-- Verdict = `sweep`, agent attempted to lock the bend anyway → ask: *"Verdict sweep. Halt planning. Output sweep alternative to user."*
-- Verdict = `judge` → ask: *"Judgment call. Output cost+benefit to user. Do not lock alone."*
+- Cost or benefit not bucketed → *"Pick S/M/L for each. Anchor to LOC count, file count, or trap reference."*
+- Verdict = `sweep`, agent tried to lock bend → *"Verdict sweep. Halt planning. Output sweep alternative to user."*
+- Verdict = `judge` → *"Judgment call. Output cost+benefit to user. Do not lock alone."*
 
 ---
 
@@ -81,7 +81,7 @@ revised: YYYY-MM-DD
 
 ## Kit conventions (do not delete — survives context clears, do not deduplicate)
 
-> Header copied verbatim into every PLAN.md.
+> Header copied verbatim into every PLAN.md and PROGRESS.md.
 
 - **Sweep-vs-bend** (every locked decision):
   - **Cost buckets** (sweep blast radius): S ≤50 LOC, no migration. M 50-200 LOC OR multi-file refactor, no wire/data shape change. L >200 LOC OR wire/data shape change OR breaks Trap-rated invariant.
@@ -95,11 +95,12 @@ revised: YYYY-MM-DD
     COST  L    bend  bend   judge
     ```
   - **Verdict actions:** bend → record + continue. judge → surface cost+benefit, await user lock. sweep → halt planning, surface alternative.
-  - **Lock-table row format:** `| # | Decision | Sweep cost | Sweep benefit | Verdict | Notes |`. Notes required, one line: greenfield version + concrete blocking cost. Append `(default-M)` to Notes when bucket was an uncertainty default.
+  - **Lock-table row format:** `| # | Decision | Sweep cost | Sweep benefit | Verdict | Notes |`. Notes required, one line: greenfield version + concrete blocking cost. Append `(default-M)` to Notes when bucket was uncertainty default.
 - **Doc style** (every kit-managed doc):
   - **WHAT, not WHY.** State current behavior + scope. Reasoning only in dedicated "Rationale" section if needed.
   - **Structure beats prose.** Tables for compares. Fenced code blocks. Lists for sets. Walls of text = restructure.
   - **Brief.** Cut filler, hedging, future-tense narration, "we"/"let's", trailing summaries.
+  - **Caveman.** Drop articles + filler. Fragments OK. Technical terms exact. Code, commits, security warnings, irreversible-action confirmations stay normal.
 - **User-suggestion mapping**: bucket cost + benefit per matrix BEFORE evaluating user proposal. Output verdict.
 - **Plan-edit commits**:
     - `plan: <area> — <change>` (PLAN edits — only at kickoff or phase boundary)
@@ -108,8 +109,8 @@ revised: YYYY-MM-DD
     - Cost or benefit not bucketed → *"Pick S/M/L. Default M if unsure. Anchor to LOC count, file count, or trap reference."*
     - Verdict = sweep, attempted bend lock → *"Verdict sweep. Halt planning. Output sweep alternative."*
     - Verdict = judge → *"Judgment call. Output cost+benefit. Do not lock alone."*
-- **File roles**: PLAN.md = canonical spec, read-only during a phase. PROGRESS.md = active-phase working slice, the ONLY file read on resume. Mid-phase edits land in PROGRESS only.
-- **Phase close** (user-fired): sync PROGRESS deltas → PLAN; mark phase shipped; extract next phase slice → overwrite PROGRESS. PLAN write only happens at phase boundary. Mid-impl surprises route immediately to PROGRESS active risks / AGENTS trap / code comment / PROGRESS open question / discard — never batched. No catch-all "phase close notes" or "mid-impl decisions" section.
+- **File roles**: PLAN.md = canonical spec, read-only during phase. PROGRESS.md = active-phase working slice, ONLY file read on resume. Mid-phase edits land in PROGRESS only.
+- **Phase close** (user-fired): sync PROGRESS deltas → PLAN; mark phase shipped; extract next phase slice → overwrite PROGRESS. PLAN write only at phase boundary. Mid-impl surprises route immediately to PROGRESS active risks / AGENTS trap / code comment / PROGRESS open question / discard — never batched. No catch-all "phase close notes" or "mid-impl decisions" section.
 
 ## §1. Closed enums
 
@@ -117,13 +118,13 @@ Every union type, exhaustively listed. Anti-hallucination guardrail.
 
 ## §2. Schema lock
 
-Canonical data shape lives as typed source in repo (path varies by language: `schema/types.ts`, `schema/*.proto`, `pkg/schema/*.go`, etc.). PLAN.md keeps a 1-line pointer:
+Canonical data shape lives as typed source in repo (path varies by language: `schema/types.ts`, `schema/*.proto`, `pkg/schema/*.go`, etc.). PLAN.md keeps 1-line pointer:
 
 ```
 schema-lock: <repo-path>
 ```
 
-Project's type-checker / build system enforces conformance. Discriminated unions explicit in source. Drift between PLAN and code impossible — the code IS the spec.
+Project's type-checker / build system enforces conformance. Discriminated unions explicit in source. Drift between PLAN and code impossible — code IS spec.
 
 ## §3-N. Subsystems
 
@@ -148,18 +149,18 @@ deleted:  [...]
 
 ## Test additions
 
-Test points that prove each phase landed.
+Test points proving each phase landed.
 
 ## Risk register
 
-Active risks only. Resolved risks discarded or strikethrough.
+Active risks only. Resolved risks discarded.
 ```
 
 ---
 
 ## §5. PROGRESS.md template (active-phase working slice)
 
-PROGRESS holds everything needed to resume work on the active phase WITHOUT loading PLAN.md. Slice is extracted from PLAN.md at phase boundary (see §6) and carries: kit conventions, active phase lock table, file scope, test additions, active risks (incl. multi-phase risks carrying forward), open questions, schema-lock pointer.
+PROGRESS holds everything needed to resume work on active phase WITHOUT loading PLAN.md. Slice extracted from PLAN.md at phase boundary (§6). Carries: kit conventions, active phase lock table, file scope, test additions, active risks (incl. multi-phase carry-forwards), open questions, schema-lock pointer.
 
 ```markdown
 # <implementation> — Progress
@@ -204,16 +205,16 @@ deleted:  [...]
 - `plan-source: PLAN.md §<area>`
 ```
 
-Mid-phase edits land in PROGRESS only. PLAN.md is read-only during a phase. New risks, new open questions, scope amendments all touch PROGRESS. At phase close, deltas sync back to PLAN (§6).
+Mid-phase edits land in PROGRESS only. PLAN.md read-only during phase. New risks, new open questions, scope amendments all touch PROGRESS. At phase close, deltas sync back to PLAN (§6).
 
 ---
 
 ## §6. Phase close + mid-impl routing
 
-**Phase close** (user-fired). Agent runs the sync-and-extract ritual:
+**Phase close** (user-fired). Agent runs sync-and-extract ritual:
 
 1. **Sync PROGRESS deltas → PLAN.md.** Merge mid-phase additions back into PLAN:
-   - New risks in PROGRESS active-risks list → append to PLAN risk register (tagged active for downstream phases if multi-phase).
+   - New risks in PROGRESS active-risks list → append to PLAN risk register (tag active for downstream phases if multi-phase).
    - Resolved risks → delete from PLAN.
    - New open questions → PLAN open questions section.
    - Lock-table amendments → update PLAN active-phase section.
@@ -234,9 +235,9 @@ After step 4, resume from PROGRESS picks up at phase N+1 without re-loading PLAN
 - **AGENTS.md trap entry** — cross-phase pattern future code must reuse or avoid.
 - **Code comment at site** — single-site implementation detail.
 - **PROGRESS open questions** — TODO requiring user decision.
-- **Discard** — one-shot historical fact with no audit value.
+- **Discard** — one-shot historical fact, no audit value.
 
-PLAN.md is **read-only during a phase**. The sync ritual at phase close is the only write opportunity. No "phase close notes" or "mid-impl decisions" catch-all sections allowed in either file.
+PLAN.md **read-only during phase**. Sync ritual at phase close is only write opportunity. No "phase close notes" or "mid-impl decisions" catch-all sections in either file.
 
 ---
 
@@ -254,5 +255,4 @@ plan: <area> — <change>
 plan: phase <N> close + extract phase <N+1>
 ```
 
-Single commit touches both PLAN.md (sync + mark shipped) and PROGRESS.md (overwrite w/ next phase slice). Body optional — file diff carries the meaningful content.
-
+Single commit touches both PLAN.md (sync + mark shipped) and PROGRESS.md (overwrite w/ next phase slice). Body optional — file diff carries meaningful content.
