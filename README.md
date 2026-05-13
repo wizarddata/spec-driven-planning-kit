@@ -2,6 +2,8 @@
 
 Portable, tool-agnostic kit for solo + AI planning. Two stages: scoping (problem → `SCOPE.md`) and implementation planning (`PLAN.md` + `PROGRESS.md`).
 
+Tested with multiple versions of Claude, only really works as intended with an otherwise clear CLAUDE.md. VSCode built in task tracker completely bypasses PROGRESS file creation and use. YMMV
+
 dev branch contains WIP workflow changes to optimize token overhead or improve consistency
 
 ## Contents
