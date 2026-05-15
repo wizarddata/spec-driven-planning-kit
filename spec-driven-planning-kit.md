@@ -1,219 +1,213 @@
 # Spec-Driven Planning Kit
 
-Agent reads this file and follows §1..§7 when planning an implementation.
-
-**Tool agnosticism:** Substitute your tool's agent-instruction filename (`CLAUDE.md`, `.cursorrules`, `GEMINI.md`, etc.) for `AGENTS.md`.
+Agent reads §0..§5. Tool agnosticism: substitute your agent-instruction filename (`CLAUDE.md`, `.cursorrules`, `GEMINI.md`, etc.) for `AGENTS.md`.
 
 ---
 
-## §1. Kickoff
+## §0. Format
 
-User invokes via `"use the kit at <path> to plan <implementation>"`. Agent reads kit and follows §1..§7.
+Pipe tables banned (syntax bleeds into commits / prose). Fenced YAML for structured data. `|` for multi-line.
 
-For an implementation in flight (PLAN.md present): no re-kickoff. Agent reads PLAN; the `## Kit conventions` header (§4) is part of every PLAN. Resume command "read .../*IMPLEMENTATION NAME*/PLAN.md and PROGRESS.md, resume Phase 3".
+## §1. Kickoff & resume
+
+```yaml
+kickoff: "use the kit at <path>/spec-driven-planning-kit.md to plan <impl>"
+resume:  "read <path>/PLAN.md  and PROGRESS.md, resume"
+closed:  "phases/closed/* = audit, not read on resume"
+```
 
 ## §2. Sweep-vs-bend
 
-Every locked decision picks one of three verdicts — `bend`, `judge`, `sweep` — by bucketing cost and benefit on the matrix below. Forces explicit comparison of the chosen compromise against a clean-slate (greenfield) alternative; prevents the agent from silently accepting bent decisions when a refactor would be cheaper than the long-term debt.
+Every locked decision picks `bend | judge | sweep` by bucketing sweep cost (greenfield blast radius) + benefit (greenfield gain).
 
-**Step 1 — bucket the sweep cost (blast radius of doing the greenfield version):**
-- **S** — ≤50 LOC, single subsystem, no migration.
-- **M** — 50-200 LOC OR multi-file refactor with no wire/data shape change.
-- **L** — >200 LOC OR wire/data shape change OR breaks a Trap-rated invariant.
-
-**Step 2 — bucket the sweep benefit (gain from the greenfield version):**
-- **S** — cosmetic / naming / placement only.
-- **M** — architectural cleanup; removes one bent constraint.
-- **L** — unblocks future work; removes a chain of bends; converts a trap into a non-issue.
-
-**Step 3 — look up the verdict:**
-
-```
-            BENEFIT
-            S      M       L
-COST  S    bend  sweep  sweep
-COST  M    bend  judge  sweep
-COST  L    bend  bend   judge
-```
-
-**Step 4 — apply the verdict:**
-- `bend` → record locked decision; continue planning.
-- `judge` → output cost+benefit summary to user; await explicit lock; do not lock alone.
-- `sweep` → halt planning; output sweep alternative to user; do not lock until user confirms (continue with sweep, or override to bend).
-
-**Locked-decision row format** (used in PROGRESS.md "Locked decisions" tables):
-
-```
-| # | Decision | Sweep cost | Sweep benefit | Verdict | Notes |
+```yaml
+cost:
+  S: "≤50 LOC, no migration"
+  M: "50-200 LOC OR multi-file refactor, no wire/data shape change"
+  L: ">200 LOC OR wire/data shape change OR breaks Trap-rated invariant"
+benefit:
+  S: "cosmetic / naming / placement"
+  M: "architectural cleanup, removes one bent constraint"
+  L: "unblocks future work, removes chain of bends, converts trap to non-issue"
+matrix: |
+              BENEFIT
+              S      M       L
+  COST  S    bend  sweep  sweep
+  COST  M    bend  judge  sweep
+  COST  L    bend  bend   judge
+actions:
+  bend:  "record + continue"
+  judge: "surface cost+benefit, await user lock"
+  sweep: "halt, surface alternative"
 ```
 
-Notes field required on every row. One line: greenfield version + concrete blocking cost (LOC count, file count, trap reference, dependency name).
+**Lock row format** (PLAN architectural locks + phase doc phase locks):
 
-**Uncertainty tag:** when cost or benefit was a default-M (AI uncertain on bucket), append `(default-M)` to Notes. User reviews post-lock and can override the bucket.
+```yaml
+- n: 1
+  decision: <short title>
+  sweep_cost: S | M | L
+  sweep_benefit: S | M | L
+  verdict: bend | judge | sweep
+  notes: |
+    Required. Greenfield version + concrete blocking cost (LOC, file count,
+    trap ref, dep name). Append "(default-M)" inline when bucket was
+    uncertainty default.
+```
 
-**User-suggestion mapping rule:** when the user proposes a solution mid-planning (not just answering Y/N), the agent buckets the suggestion's cost + benefit per the matrix BEFORE evaluating, and outputs the verdict (`bend` / `judge` / `sweep`) alongside the response.
-
----
+**User-suggestion mapping:** when user proposes a solution mid-planning (not Y/N), bucket cost+benefit BEFORE evaluating; output verdict alongside response.
 
 ## §3. Stuck-prompts
 
-Agent fires autonomously when conditions hit. User can fire manually.
+Agent fires autonomously when trigger hits. Phrasing flexible; trigger is load-bearing.
 
-- Cost or benefit not bucketed → ask: *"Pick S/M/L for each. Anchor to LOC count, file count, or trap reference."*
-- Verdict = `sweep`, agent attempted to lock the bend anyway → ask: *"Verdict sweep. Halt planning. Output sweep alternative to user."*
-- Verdict = `judge` → ask: *"Judgment call. Output cost+benefit to user. Do not lock alone."*
+```yaml
+- trigger: cost or benefit not bucketed
+  action: ask user for S/M/L, anchor to LOC / file / trap ref
 
----
+- trigger: verdict=sweep, agent attempted bend lock
+  action: halt, surface sweep alternative
+
+- trigger: verdict=judge
+  action: surface cost+benefit, await user lock (do not lock alone)
+
+- trigger: phase completion (nag-with-fast-confirm)
+  fires_when: |
+    all sub-tasks in phases/<active>.md are done:true AND
+    git log --grep "^phase<N>:" shows a commit referencing the demo
+  action: |
+    surface "Phase <N> ready to close: <X>/<Y> done, demo at <hash>.
+    Reply 'close' to fire ritual, 'not yet' to defer."
+  fires_where: end of next reply, once per ready-transition
+  suppress_when: user replies "not yet" / "skip close" / "stays open"
+  on_close: run phase_close_ritual from PLAN conventions header
+```
 
 ## §4. PLAN.md template
 
-```markdown
-# <implementation> — Plan
-
-> **Decision rationale:** `git log -- PLAN.md`.
+````markdown
+# <impl> — Plan
 
 ```yaml
 status: planning | active | done
 revised: YYYY-MM-DD
 ```
 
-## Kit conventions (do not delete — survives context clears, do not deduplicate)
+## Kit conventions (do not delete — survives /clear)
 
-> Header copied verbatim into every PLAN.md.
-
-- **Sweep-vs-bend** (every locked decision):
-  - **Cost buckets** (sweep blast radius): S ≤50 LOC, no migration. M 50-200 LOC OR multi-file refactor, no wire/data shape change. L >200 LOC OR wire/data shape change OR breaks Trap-rated invariant.
-  - **Benefit buckets** (greenfield gain): S cosmetic / naming / placement. M architectural cleanup, removes one bent constraint. L unblocks future work, removes chain of bends, converts trap to non-issue.
-  - **Verdict matrix:**
-    ```
-                BENEFIT
-                S      M       L
-    COST  S    bend  sweep  sweep
-    COST  M    bend  judge  sweep
-    COST  L    bend  bend   judge
-    ```
-  - **Verdict actions:** bend → record + continue. judge → surface cost+benefit, await user lock. sweep → halt planning, surface alternative.
-  - **Lock-table row format:** `| # | Decision | Sweep cost | Sweep benefit | Verdict | Notes |`. Notes required, one line: greenfield version + concrete blocking cost. Append `(default-M)` to Notes when bucket was an uncertainty default.
-- **Doc style** (every kit-managed doc):
-  - **WHAT, not WHY.** State current behavior + scope. Reasoning only in dedicated "Rationale" section if needed.
-  - **Structure beats prose.** Tables for compares. Fenced code blocks. Lists for sets. Walls of text = restructure.
-  - **Brief.** Cut filler, hedging, future-tense narration, "we"/"let's", trailing summaries.
-- **User-suggestion mapping**: bucket cost + benefit per matrix BEFORE evaluating user proposal. Output verdict.
-- **Plan-edit commits**:
-    - `plan: <area> — <change>`
-    - `plan: phase <N> close — promote-and-reset`
-- **Stuck-prompts** (agent fires autonomously):
-    - Cost or benefit not bucketed → *"Pick S/M/L. Default M if unsure. Anchor to LOC count, file count, or trap reference."*
-    - Verdict = sweep, attempted bend lock → *"Verdict sweep. Halt planning. Output sweep alternative."*
-    - Verdict = judge → *"Judgment call. Output cost+benefit. Do not lock alone."*
-- **Promote-and-reset** (user-fired at phase close): migrate mid-impl decisions/surprises → PLAN risks or AGENTS traps; discard sub-tasks + commit log; collapse state-of-branch → 1-line phase plan entry; reset PROGRESS to next phase.
+```yaml
+- format: pipe tables banned, fenced YAML for all structured data
+- sweep_vs_bend: see kit §2 — bucket S/M/L cost+benefit, apply matrix
+- user_suggestion_mapping: bucket BEFORE evaluating user proposal; output verdict
+- doc_style:
+    - what_not_why (reasoning in dedicated Rationale section only)
+    - structure beats prose (YAML/code for data; no walls)
+    - brief (cut filler, hedging, future-tense, we/let's, summaries)
+- file_roles:
+    PLAN: arch spec, read-only during phase
+    PROGRESS: active-phase pointer + state-of-branch (resume anchor)
+    phase_doc: phases/phase<N>-<name>.md — sole writable target during phase
+    closed: phases/closed/ — frozen audit, not read on resume
+    RISKS: append-only, status:active rows read on resume
+- commits:
+    plan_edit:     "plan: <area> — <change>"
+    phase_open:    "plan: phase <N> open"
+    phase_close:   "plan: phase <N> close — archive"
+    code_in_phase: "phase<N>: <area> — <change>"
+    filter:        'git log --grep "^phase<N>:"'
+    no_doc_log:    "git log canonical; demo_commit lives in phase doc front matter"
+- stuck_prompts: see kit §3 — bucket-missing, sweep-attempted-bend, judge, phase-completion-nag
+- phase_close_ritual (trigger: user replies "close" OR manual fire):
+    1. verify all sub-tasks done:true
+    2. verify state-of-branch references demo commit
+    3. update PLAN phase index → status:shipped + demo_commit
+    4. move phases/phase<N>-*.md → phases/closed/
+    5. in moved file: status:shipped, closed:<date>, demo_commit
+    6. reset PROGRESS pointer → next phase (or status:done)
+    7. promote load-bearing phase notes → RISKS or AGENTS.md
+    8. commit "plan: phase <N> close — archive"
+```
 
 ## §1. Glossary
-
-Named concepts, one line each. Domain vocabulary the spec uses without re-defining.
-
 ## §2. Closed enums
-
-Every union type, exhaustively listed. Anti-hallucination guardrail.
-
 ## §3. Schema
-
-Canonical data shape. JSONC with comments OK. Discriminated unions explicit.
-
 ## §4-N. Subsystems
 
-One section per concern.
-
-## Phase plan
+## Phase index
 
 ```yaml
-phase_1: { ships: [...], demo: "<unambiguous done check>" }
-phase_2: ...
+- n: 1
+  name: <slug>
+  status: planning | active | shipped
+  demo: "<unambiguous done check>"
+  demo_commit: <hash>  # populated at close
+  doc: phases/phase1-<name>.md
 ```
 
-## File scope
+## File scope (project-wide)
 
 ```yaml
-new:      [...]
+new: [...]
 modified: [...]
-deleted:  [...]
+deleted: [...]
 ```
 
-## Test additions
+## Architectural lock table
+Format per kit §2. Phase-level locks live in phase doc.
+````
 
-Test points that prove each phase landed.
+## §5. PROGRESS.md template
 
-## Risk register
+PROGRESS = YAML front matter (`active_phase`, `phase_doc`, `status`, `revised`) + `## State-of-branch` paragraph citing latest commit hash inline as resume anchor.
 
-Active risks only. Resolved risks discarded or strikethrough.
+## §5b. Phase doc template — `phases/phase<N>-<name>.md`
+
+````markdown
+# Phase <N> — <name>
+
+```yaml
+status: planning | active | shipped
+opened: YYYY-MM-DD
+closed: YYYY-MM-DD     # populated at archive
+demo: "<unambiguous done check>"
+demo_commit: <hash>    # populated at archive
+reads: [PLAN.md, plan/<subsystem>.md, ...]
 ```
 
----
+## Scope
 
-## §5. PROGRESS.md template (active phase only)
+## Sub-tasks
 
-```markdown
-# <implementation> — Progress
-
-> Conventions live in PLAN.md "Kit conventions" header. Do not duplicate.
-
-## Phase 1 — <name>
-
-### Sub-tasks
-- [ ] T1 — <thing>
-- [ ] T2 — ...
-
-### Commit log
-<hash> phase1: <area> — <change>
-
-### Mid-impl decisions / surprises
-- <deviation> — <reason>
-
-### State-of-branch checkpoint
-<one paragraph after major commits — most recent only, prior overwritten>
+```yaml
+- { id: T1, done: false, what: ... }
 ```
 
-PROGRESS.md never accumulates. User fires promote-and-reset at phase close (§6).
+## File scope (this phase)
 
----
-
-## §6. Promote-and-reset
-
-User-fired at phase close. Agent runs:
-
-1. **Mid-impl decisions / surprises** → migrate to PLAN.md risk register OR AGENTS.md trap entries (whichever fits).
-2. **Sub-task checklist** → discard.
-3. **Commit log block** → discard.
-4. **State-of-branch checkpoint** → collapse to 1-line phase plan entry in PLAN.md (`Phase 2 shipped: <demo>`).
-5. **PROGRESS.md** → reset to next phase template (header + empty sub-tasks).
-
-Phase rollover commits with format from §7:
-```
-plan: phase 2 close — promote-and-reset
+```yaml
+new: [...]
+modified: [...]
+deleted: [...]
 ```
 
----
+## Phase locks
+Format per kit §2.
 
-## §7. Git commit conventions for plan changes
+## Phase notes
+````
 
-PLAN.md changes commit separately from code (one logical change per commit).
+## §5c. RISKS.md template
 
-**Decision / plan edit:**
+````markdown
+# <impl> — Risks
+
+```yaml
+- id: R1
+  status: active | resolved | deferred
+  source: "§<N> / P<N>"
+  risk: |
+    What can go wrong.
+  mitigation: |
+    What to do. On resolve, append: "Closed at <hash>. <fix>."
 ```
-plan: <area> — <change>
-```
-
-**Phase close:**
-```
-plan: phase <N> close — promote-and-reset
-
-Promoted to PLAN.md risk register:
-- <decision> — <why load-bearing>
-Promoted to AGENTS.md trap entries:
-- <trap> — <why future readers need it>
-Discarded:
-- Sub-task checklist
-- Commit log
-- State-of-branch (collapsed to phase plan one-liner)
-```
-
+````
