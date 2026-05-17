@@ -27,7 +27,7 @@ Agent runs Rules 1-7, brainstorms feature-gap pass, writes `SCOPE.md`.
 use the kit at <path>/spec-driven-planning-kit.md to plan <implementation>
 ```
 
-Agent reads §0..§8, runs sweep-vs-bend lock loop, writes:
+Agent reads §0..§6, applies arch_decisions rule on each lock, writes:
 
 ```yaml
 - PLAN.md            # canonical arch spec + Kit conventions header
@@ -46,7 +46,7 @@ PLAN loads conventions; PROGRESS points to active phase doc; conventions tell ag
 
 ### Phase close
 
-Triggered by user reply "close" to the completion stuck-prompt (§3), or fired manually with "close phase <N>". Agent runs the §6 ritual atomically:
+Triggered by user reply "close" to the §3 phase-completion nag, or fired manually with "close phase <N>". Agent runs the §6 ritual as a TaskList — one task per step, tick each, single commit at end:
 
 ```yaml
 - verify all sub-tasks done
@@ -57,6 +57,8 @@ Triggered by user reply "close" to the completion stuck-prompt (§3), or fired m
 - promote load-bearing notes → RISKS or AGENTS.md
 - commit "plan: phase <N> close — archive"
 ```
+
+Skipped step = unticked task = visible to user.
 
 ## Tool agnosticism
 

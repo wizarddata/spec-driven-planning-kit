@@ -1,86 +1,52 @@
 # Spec-Driven Planning Kit
 
-Agent reads §0..§5. Tool agnosticism: substitute your agent-instruction filename (`CLAUDE.md`, `.cursorrules`, `GEMINI.md`, etc.) for `AGENTS.md`.
+Agent reads §0..§6. Tool agnosticism: substitute your agent-instruction filename (`CLAUDE.md`, `.cursorrules`, `GEMINI.md`, etc.) for `AGENTS.md`.
 
 ---
 
 ## §0. Format
 
-Pipe tables banned (syntax bleeds into commits / prose). Fenced YAML for structured data. `|` for multi-line.
+Pipe tables banned. All structured data in fenced YAML. `|` for multi-line.
 
 ## §1. Kickoff & resume
 
 ```yaml
 kickoff: "use the kit at <path>/spec-driven-planning-kit.md to plan <impl>"
-resume:  "read <path>/PLAN.md  and PROGRESS.md, resume"
+resume:  "read <path>/PLAN.md and PROGRESS.md, resume"
 closed:  "phases/closed/* = audit, not read on resume"
 ```
 
-## §2. Sweep-vs-bend
-
-Every locked decision picks `bend | judge | sweep` by bucketing sweep cost (greenfield blast radius) + benefit (greenfield gain).
+## §2. Arch decisions
 
 ```yaml
-cost:
-  S: "≤50 LOC, no migration"
-  M: "50-200 LOC OR multi-file refactor, no wire/data shape change"
-  L: ">200 LOC OR wire/data shape change OR breaks Trap-rated invariant"
-benefit:
-  S: "cosmetic / naming / placement"
-  M: "architectural cleanup, removes one bent constraint"
-  L: "unblocks future work, removes chain of bends, converts trap to non-issue"
-matrix: |
-              BENEFIT
-              S      M       L
-  COST  S    bend  sweep  sweep
-  COST  M    bend  judge  sweep
-  COST  L    bend  bend   judge
-actions:
-  bend:  "record + continue"
-  judge: "surface cost+benefit, await user lock"
-  sweep: "halt, surface alternative"
+rule: |
+  Before locking any decision that bends existing arch, internally weigh
+  the rewrite alternative. Lock the local fix only if rewrite is concretely
+  more expensive. Surface both options to user when genuinely unsure.
+
+lock_row:
+  - n: 1
+    decision: <short title>
+    constraint: <tag>     # what's being bent around — enables chain detector
+    note: <one line>
+
+chain_detector: |
+  Before locking a bend, grep prior locks for same constraint tag.
+  Match → surface sweep candidate (may auto-resolve or escalate to user).
 ```
 
-**Lock row format** (PLAN architectural locks + phase doc phase locks):
+## §3. Phase-completion nag
 
 ```yaml
-- n: 1
-  decision: <short title>
-  sweep_cost: S | M | L
-  sweep_benefit: S | M | L
-  verdict: bend | judge | sweep
-  notes: |
-    Required. Greenfield version + concrete blocking cost (LOC, file count,
-    trap ref, dep name). Append "(default-M)" inline when bucket was
-    uncertainty default.
-```
-
-**User-suggestion mapping:** when user proposes a solution mid-planning (not Y/N), bucket cost+benefit BEFORE evaluating; output verdict alongside response.
-
-## §3. Stuck-prompts
-
-Agent fires autonomously when trigger hits. Phrasing flexible; trigger is load-bearing.
-
-```yaml
-- trigger: cost or benefit not bucketed
-  action: ask user for S/M/L, anchor to LOC / file / trap ref
-
-- trigger: verdict=sweep, agent attempted bend lock
-  action: halt, surface sweep alternative
-
-- trigger: verdict=judge
-  action: surface cost+benefit, await user lock (do not lock alone)
-
-- trigger: phase completion (nag-with-fast-confirm)
-  fires_when: |
-    all sub-tasks in phases/<active>.md are done:true AND
-    git log --grep "^phase<N>:" shows a commit referencing the demo
-  action: |
-    surface "Phase <N> ready to close: <X>/<Y> done, demo at <hash>.
-    Reply 'close' to fire ritual, 'not yet' to defer."
-  fires_where: end of next reply, once per ready-transition
-  suppress_when: user replies "not yet" / "skip close" / "stays open"
-  on_close: run phase_close_ritual from PLAN conventions header
+trigger: |
+  After any commit agent judges likely completes the phase (last sub-task
+  or matches demo description).
+action: |
+  Surface close prompt at end of reply — "Phase <N> ready to close: <X>/<Y>
+  done, demo at <hash>. Reply 'close' to fire ritual, 'not yet' to defer."
+suppress: |
+  None. "not yet" drops for current reply only. Next phase-completing
+  commit re-prompts. Re-firing is correct behavior — user may have forgotten.
 ```
 
 ## §4. PLAN.md template
@@ -96,16 +62,21 @@ revised: YYYY-MM-DD
 ## Kit conventions (do not delete — survives /clear)
 
 ```yaml
-- format: pipe tables banned, fenced YAML for all structured data
-- sweep_vs_bend: see kit §2 — bucket S/M/L cost+benefit, apply matrix
-- user_suggestion_mapping: bucket BEFORE evaluating user proposal; output verdict
+- pipe_tables: banned; YAML fence for all structured data
+- arch_decisions: |
+    Weigh rewrite before bend. Lock local fix only if rewrite concretely
+    costlier. Surface both options to user when unsure.
+- lock_row: [n, decision, constraint, note]
 - doc_style:
-    - what_not_why (reasoning in dedicated Rationale section only)
+    - what_not_why (reasoning in Rationale section only)
     - structure beats prose (YAML/code for data; no walls)
-    - brief (cut filler, hedging, future-tense, we/let's, summaries)
+    - brief (cut filler, hedging, future-tense, we/let's, trailing summaries)
+- plan_sections:
+    required: [§1 Glossary, §2 Closed enums, §3 Schema, §4-N Subsystems]
+    rule: do not rename, do not drop numbering. Section absent → "N/A" line.
 - file_roles:
     PLAN: arch spec, read-only during phase
-    PROGRESS: active-phase pointer + state-of-branch (resume anchor)
+    PROGRESS: active-phase pointer + state-of-branch
     phase_doc: phases/phase<N>-<name>.md — sole writable target during phase
     closed: phases/closed/ — frozen audit, not read on resume
     RISKS: append-only, status:active rows read on resume
@@ -114,24 +85,23 @@ revised: YYYY-MM-DD
     phase_open:    "plan: phase <N> open"
     phase_close:   "plan: phase <N> close — archive"
     code_in_phase: "phase<N>: <area> — <change>"
-    filter:        'git log --grep "^phase<N>:"'
-    no_doc_log:    "git log canonical; demo_commit lives in phase doc front matter"
-- stuck_prompts: see kit §3 — bucket-missing, sweep-attempted-bend, judge, phase-completion-nag
-- phase_close_ritual (trigger: user replies "close" OR manual fire):
-    1. verify all sub-tasks done:true
-    2. verify state-of-branch references demo commit
-    3. update PLAN phase index → status:shipped + demo_commit
-    4. move phases/phase<N>-*.md → phases/closed/
-    5. in moved file: status:shipped, closed:<date>, demo_commit
-    6. reset PROGRESS pointer → next phase (or status:done)
-    7. promote load-bearing phase notes → RISKS or AGENTS.md
-    8. commit "plan: phase <N> close — archive"
+- phase_close_ritual:
+    trigger: user replies "close" OR manual fire
+    execution: agent creates TaskList from §6 steps, ticks each, single commit at end
+    see: kit §6
 ```
 
 ## §1. Glossary
+Domain terms used across PLAN. One line per term.
+
 ## §2. Closed enums
+Locked sets — state machines, type variants, mode flags. Lock values here; do not invent new ones in code.
+
 ## §3. Schema
+Data shapes — wire formats, DB schema, file formats, interface signatures.
+
 ## §4-N. Subsystems
+One section per arch component. Naming + ordering up to project.
 
 ## Phase index
 
@@ -158,7 +128,7 @@ Format per kit §2. Phase-level locks live in phase doc.
 
 ## §5. PROGRESS.md template
 
-PROGRESS = YAML front matter (`active_phase`, `phase_doc`, `status`, `revised`) + `## State-of-branch` paragraph citing latest commit hash inline as resume anchor.
+PROGRESS = YAML block (`active_phase`, `phase_doc`, `status`, `revised`) at top of file + `## State-of-branch` paragraph citing latest commit hash inline as resume anchor.
 
 ## §5b. Phase doc template — `phases/phase<N>-<name>.md`
 
@@ -211,3 +181,22 @@ Format per kit §2.
     What to do. On resolve, append: "Closed at <hash>. <fix>."
 ```
 ````
+
+## §6. Phase-close ritual
+
+Triggered by user replying "close" to the §3 phase-completion nag, OR manual fire ("close phase <N>").
+
+Agent creates TaskList from these steps, ticks each as done, single commit at end:
+
+```yaml
+1. verify all sub-tasks done:true
+2. verify state-of-branch references demo commit
+3. update PLAN phase index → status:shipped + demo_commit
+4. move phases/phase<N>-*.md → phases/closed/
+5. in moved file: status:shipped, closed:<date>, demo_commit
+6. reset PROGRESS pointer → next phase (or status:done)
+7. promote load-bearing phase notes → RISKS or AGENTS.md
+8. commit "plan: phase <N> close — archive"
+```
+
+Skipped step = unticked task = visible to user. No "all done" claim until every task ticked + commit landed.
