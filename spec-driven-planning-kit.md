@@ -22,12 +22,14 @@ closed:  "phases/closed/* = audit, not read on resume"
 rule: |
   Before locking any decision that bends existing arch, internally weigh
   the rewrite alternative. Lock the local fix only if rewrite is concretely
-  more expensive. Surface both options to user when genuinely unsure.
+  more expensive. Record the verdict in the lock row's why_not_rewrite
+  field — one line. Surface both options to user when genuinely unsure.
 
 lock_row:
   - n: 1
     decision: <short title>
-    constraint: <tag>     # what's being bent around — enables chain detector
+    constraint: <tag>            # what's being bent around — enables chain detector
+    why_not_rewrite: <one line>  # bend rows only — why rewrite lost. Free text, not a bucket.
     note: <one line>
 
 chain_detector: |
@@ -66,7 +68,7 @@ revised: YYYY-MM-DD
 - arch_decisions: |
     Weigh rewrite before bend. Lock local fix only if rewrite concretely
     costlier. Surface both options to user when unsure.
-- lock_row: [n, decision, constraint, note]
+- lock_row: [n, decision, constraint, why_not_rewrite, note]
 - doc_style:
     - what_not_why (reasoning in Rationale section only)
     - structure beats prose (YAML/code for data; no walls)
